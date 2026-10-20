@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orange Zone — Work Phase Planner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#14100c; --panel:#1f1a14; --panel2:#2a231b; --line:#3d3327;
+    --ink:#e8ddc9; --dim:#a89a80; --accent:#e8862e; --good:#7ec96f;
+    --warn:#e8c53a; --bad:#e05a4e; --sel:#4a90d9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Segoe UI",system-ui,sans-serif}
+  h1{font-size:18px;margin:0;color:var(--accent)}
+  h2{font-size:13px;margin:0 0 8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+  button,select,input{font:inherit}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#1a120a;font-weight:600;border-color:var(--accent)}
+  button.mini{padding:1px 7px;font-size:11px}
+  input[type=number],select{background:#120e0a;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:3px 6px;width:60px}
+  select{width:auto}
+  .bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .bar .grp{display:flex;gap:6px;align-items:center}
+  .bar label,.needs label{color:var(--dim);font-size:12px}
+  .needs{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:6px 14px;background:#1a1510;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+  .needs input{width:52px}
+  .needs b{color:var(--ink)}
+  .needs .low{color:var(--warn)}
+  .wrap{display:grid;grid-template-columns:300px 1fr;gap:12px;padding:12px}
+  .roster{display:flex;flex-direction:column;gap:8px}
+  .char{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;user-select:none}
+  .char.sel{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset}
+  .char.away{opacity:.45}
+  .char .nm{font-weight:600}
+  .char .arch{color:var(--dim);font-size:12px}
+  .char .btns{float:right}
+  .stats{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+  .st{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--panel2);border:1px solid var(--line)}
+  .st b{font-weight:600}
+  .ok{color:var(--good)} .p1{color:var(--warn)} .p2{color:#f09a3a} .p3{color:var(--bad)}
+  .hydra{font-size:11px;color:var(--sel)}
+  .tag{font-size:10px;color:var(--dim)}
+  .awaytag{color:var(--bad);font-size:11px}
+  .prj{font-size:11px;color:var(--good);margin-top:4px}
+  .prj .wn{color:var(--warn)}
+  .prj .dth{color:var(--bad)}
+  .stations{display:flex;flex-direction:column;gap:8px}
+  .station{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+  .station.off{opacity:.5}
+  .stn-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .stn-head .name{font-weight:600;min-width:160px}
+  .slots{display:flex;gap:6px;flex-wrap:wrap}
+  .slot{min-width:100px;padding:4px 8px;border:1px dashed var(--line);border-radius:6px;color:var(--dim);cursor:pointer;text-align:center}
+  .slot.filled{border-style:solid;border-color:var(--sel);color:var(--ink);background:var(--panel2)}
+  .slot .rm{color:var(--bad);margin-left:6px}
+  .preview{margin-top:6px;font-size:12px;color:var(--good);display:none}
+  .preview .f{color:var(--dim)}
+  .preview .wn{color:var(--warn)}
+  .station.cand .preview{display:block}
+  .meta{font-size:12px;color:var(--dim)}
+  .meta b{color:var(--ink)}
+  details{font-size:12px;color:var(--dim);margin-top:4px}
+  summary{cursor:pointer}
+  .cmpt{width:100%;margin-top:6px}
+  .cmpt td{font-size:11px}
+  .totals{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);position:sticky;bottom:0}
+  .totals div{font-size:13px}
+  .totals .neg{color:var(--bad)} .totals .wn{color:var(--warn)}
+  .prio{width:40px}
+  table{border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:3px 7px;text-align:center}
+  th{background:var(--panel2);color:var(--dim)}
+  td.l{text-align:left}
+  td .sh{display:block;font-size:10px;color:var(--dim)}
+  .modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:20}
+  .modal.open{display:flex}
+  .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;max-width:580px;max-height:85vh;overflow:auto}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .grid label{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:2px}
+  .grid input{width:100%}
+  .rowline{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .warnline{color:var(--warn);font-size:12px}
+  .kbd{font-size:11px;color:var(--dim)}
+  #resolve td{font-size:12px}
+  #resolve input{width:52px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Orange Zone Planner</h1>
+  <div class="grp"><label>Day</label><b id="day">–</b></div>
+  <div class="grp"><label>Phase</label>
+    <select id="phase"><option value="p1">Work Phase 1</option><option value="p2">Work Phase 2</option></select></div>
+  <div class="grp"><label>Power</label><input type="number" id="power" step="0.5" style="width:56px"></div>
+  <div class="grp"><label>Weather</label><select id="weather"></select></div>
+  <div class="grp"><label>Worker cap</label><input type="number" id="cap" value="5" style="width:44px"></div>
+  <div class="grp"><label>Accident ≤</label><input type="number" id="acc" value="10" style="width:44px">
+    <label>Lucky ≥</label><input type="number" id="luck" value="90" style="width:44px"></div>
+  <button class="primary" id="auto">Auto-suggest</button>
+  <button id="clear">Clear</button>
+  <button id="copy">Copy plan</button>
+  <button id="newday" title="End the day: clear plans, recharge power, clear mission flags">New day</button>
+  <button id="reset" title="Discard edits, reload sheet snapshot">Reset</button>
+  <span class="kbd">click survivor → click slot · click slot to swap · edit via ⚙</span>
+</div>
+<div class="needs" id="needs"></div>
+<div class="wrap">
+  <div>
+    <h2>Roster</h2>
+    <div class="roster" id="roster"></div>
+    <h2 style="margin-top:12px">Apply rolled results</h2>
+    <div id="resolve"></div>
+  </div>
+  <div>
+    <h2>Grades <span class="kbd">computed · sheet grade below</span></h2>
+    <div id="grades" style="margin-bottom:12px"></div>
+    <h2>Stations (top → bottom order)</h2>
+    <div class="stations" id="stations"></div>
+  </div>
+</div>
+<div class="totals" id="totals"></div>
+
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script src="state.js"></script>
+<script>
+"use strict";
+/* ================= rules constants ================= */
+const F=s=>Math.floor(s/10), T=s=>Math.floor(s/20);
+const HYDRA={FULL:0,LIGHT:5,MODERATE:10,SEVERE:20};   // roll modifier magnitude
+const WEATHERS=["Sunny","Rainy","Chill Fog","Blizzard","Plague Wind","Humid","Scorcher"];
+const WEATHER_W={ // per-worker status penalties + per-phase resource bonuses
+ "Rainy":{stress:5,raw:1.5},"Blizzard":{rand:10,raw:3},"Plague Wind":{plague:5},
+ "Humid":{fatigue:8},"Scorcher":{fatigue:10}};
+const DOMAINS={Physical:["STR","DEX","CON","AGI"],Survival:["CRF","FLD","STL","SCAV"],
+ Mental:["INT","WILL","CHA","PER"],Science:["PHYS","BIO","MED","COMP"]};
+const STATUS_DOMAIN={injury:"Physical",plague:"Survival",stress:"Mental",hunger:"Science"};
+
+/* ================= Auto-suggest value model (tune here; mirrored in README) =================
+   plan value = Σ prio²·station value − Σ worker strain + rest + Ida bonus + Phase-1 power reserve
+   1 point ≈ one good shift. Power itself is never a benefit: it's a legality check (+ reserve in P1). */
+const VAL={
+  hungerPerNight:20,                 // per survivor (Turn Order: "usually 20"); fruit = 5 hunger
+  foodUrgency:[[1.5,1.5],[3,1],[Infinity,.6]],   // [nights of food left < n, × fruit value]
+  wood:1/20, metal:1/12,             // per unit
+  rawWater:1/5,                      // per unit, only up to free tank space
+  progress:1/40,                     // Lab/Forge per point, Lab capped at what's still needed; Forge 0 with no queue
+  finishBonus:.75,                   // this phase completes the Lab
+  reveal:1/60,                       // SIGINT per point (excess carries over, so never capped)
+  cancel:1,                          // a Plague Card Cancel × combined chance
+  powerReserve:.15,                  // Phase 1 only: each power left for Phase 2 (× bike prio²)
+  bored:.4,                          // Ida uses a MENT/SCI station, unless she already did in Phase 1
+  perPoint:{fatigue:.01,hunger:.01,injury:.03,stress:.015,plague:.02},   // strain per status point gained
+  band:[0,.25,.5,1,10],              // strain of sitting in band <25 · 25–49 · 50–75 · >75 · 100+ (death)
+};
+
+/* exact EV of max(0, 1d(sides)+flat) */
+function evD(sides,flat){let t=0;for(let f=1;f<=sides;f++)t+=Math.max(0,f+flat);return t/sides}
+const d10=f=>evD(10,f), d6=f=>evD(6,f);
+function penalty(s){return s>75?.4:s>=50?.2:s>=25?.1:0}   // sheet: ">75 = 40%"
+function condSteps(ss){return ss.cond==null?0:Math.floor((100-ss.cond)/20)}
+function condOut(sid,ss){const stn=typeof sid==="string"?st(sid):sid;return (stn.condOut||0)*condSteps(ss)}
+function fmtFlat(die,flat){return die?`1${die}${flat>=0?"+":""}${flat}`:`${flat>=0?"+":""}${flat}`}
+
+/* ================= station definitions =================
+   cost() -> [status, die|null, flat] entries (die used for EV + roll formula)
+   out()  -> {resource: amount}                                              */
+const STATIONS=[
+ {id:"shelter",name:"The Shelter",slots:99,rest:true,ida:false,
+  out:c=>({fatigue:-13.5}),
+  note:"Rest: restore 1d6+10 fatigue. Unlimited.",
+  rules:"Restore 1d6 + 10 fatigue."},
+ {id:"bike",name:"Generator Bike",slots:1,accInj:7,condF:5,ida:false,
+  out:c=>({power:2}),
+  cost:c=>[["fatigue","d10",15-F(e(c,"AGI"))],["hunger","d6",5-F(e(c,"AGI"))],
+           ...(e(c,"AGI")<30?[["injury",null,2]]:[])],
+  note:"+2 power",rules:"Generate 2 power. Fatigue 1d10+15 −1/10 AGI. Hunger 1d6+5 −1/10 AGI. +2 injury if AGI<30. Accident: station 15 dmg, worker +7 injury."},
+ {id:"water",name:"Water Tanks",slots:1,accInj:7,condF:5,ida:false,
+  powerOpt:{cost:1,label:"+1 power → 5 raw (vs 3.5)"},
+  out:(c,o)=>({rawWater:o.powerOpt?5:3.5}),
+  cost:c=>[["fatigue","d10",12-T(e(c,"STR"))-T(e(c,"CON"))],["hunger","d6",3-T(e(c,"STR"))-T(e(c,"CON"))],
+           ...(e(c,"STR")+e(c,"CON")<60?[["injury",null,2]]:[])],
+  note:"+3.5 raw water (or 5 for 1 power)",rules:"Generate 3.5 raw water, or spend 1 power for 5. Fatigue 1d10+12 −1/20 STR −1/20 CON. Hunger 1d6+3 same. +2 injury if STR+CON<60."},
+ {id:"forge",name:"The Forge",slots:1,power:1,accInj:7,accSta:"stress",ida:false,
+  out:c=>({pForge:0.5*e(c,"CRF")}),
+  cost:c=>[["fatigue","d10",12]],
+  note:"+½·CRF progress, −1 power",rules:"Costs 1 power. Generate 1/2 CRF progress. Fatigue 1d10+12. Accident: 10 dmg +7 stress."},
+ {id:"workshop",name:"The Workshop",slots:2,power:1,accInj:7,accSta:"stress",condF:5,ida:true,
+  out:c=>({pWork:(e(c,"CRF")+e(c,"COMP"))/2}),
+  cost:c=>[["fatigue","d10",10]],
+  note:"+mean(CRF,COM) progress, −1 power",rules:"Costs 1 power. Generate mean of CRF + COM progress. Fatigue 1d10+10. Accident: 10 dmg +7 stress."},
+ {id:"sigint",name:"SIGINT",slots:1,power:1,accInj:7,condF:5,prog:true,ida:true,
+  out:c=>({pSIG:8+e(c,"SCAV")}),
+  cost:c=>[["fatigue","d10",15-F(e(c,"COMP"))],["hunger","d6",5-F(e(c,"COMP"))]],
+  note:"+1d15+SCAV mission reveal, −1 power",rules:"Costs 1 power. 1d15 + SCAV mission reveal progress. Fatigue 1d10+15 −1/10 COMP. Hunger 1d6+5 −1/10 COMP."},
+ {id:"hydro",name:"Hydroponics",slots:1,accInj:7,condF:5,condOut:-2,abund:1,ida:true,
+  out:(c,o,ss)=>{const best=Math.max(e(c,"SCAV")/3,e(c,"BIO")/2);
+    return {fruit:Math.max(0,Math.floor(best*(ss.abundance/100)+condOut("hydro",ss)))}},
+  cost:c=>[["fatigue","d10",16-F(e(c,"WILL"))],["hunger","d6",-1]],
+  note:"+fruit (⅓·SCAV or ½·BIO × abundance)",rules:"Generate 1/3 SCAV or 1/2 BIO fruit × abundance. Fatigue 1d10+16 −1/10 WILL. Hunger 1d6−1."},
+ {id:"logging",name:"Logging",slots:2,accInj:7,condF:5,condOut:-2,ida:false,
+  out:(c,o,ss)=>({wood:Math.max(0,Math.floor(e(c,"CON")/5)+condOut("logging",ss))}),
+  cost:c=>[["fatigue","d10",12-F(e(c,"AGI"))]],
+  note:"+⌊CON/5⌋ wood",rules:"Generate 1/5 CON wood. Fatigue 1d10+12 −1/10 AGI."},
+ {id:"iron",name:"Iron Processing",slots:2,accInj:7,condF:5,condOut:-2,ida:false,
+  out:(c,o,ss)=>({metal:Math.max(0,Math.floor(e(c,"STR")/6)+condOut("iron",ss))}),
+  cost:c=>[["fatigue","d10",12-F(e(c,"DEX"))]],
+  note:"+⌊STR/6⌋ metal",rules:"Generate 1/6 STR metal. Fatigue 1d10+12 −1/10 DEX."},
+ {id:"lookout",name:"Lookout Station",slots:2,accInj:10,ida:true,
+  out:c=>({cancel:e(c,"PER")}),
+  cost:c=>[["fatigue","d10",12-F(e(c,"FLD"))]],
+  note:"+PER% plague-card-cancel chance",rules:"Generate PER chance to gain a Plague Card Cancel. Fatigue 1d10+12 −1/10 FLD. Accident: worker +10 injury."},
+];
+const st=id=>STATIONS.find(s=>s.id===id);
+const sname=stn=>stn.name.replace(/^The /,"").split(" ")[0];
+const RES_KEYS=["fruit","wood","metal","rawWater"];   // Look There boosts resources only, not progress (ruling)
+const OUT_LBL={pForge:"Forge prog",pWork:"Lab prog",pSIG:"SIGINT",fruit:"Fruit",wood:"Wood",metal:"Metal",rawWater:"Raw H₂O",fatigue:"Rest",power:"Power",cancel:"Cancel %"};
+
+/* ================= effective skill ================= */
+function e(c,skill){
+  const s=c.skills[skill].cur;
+  if(c.ignorePen)return s;
+  let mult=1-penalty(c.statuses.fatigue);
+  for(const[stt,dom]of Object.entries(STATUS_DOMAIN))
+    if(DOMAINS[dom].includes(skill))mult*=1-penalty(c.statuses[stt]);
+  return s*mult;
+}
+const hasTrait=(c,re)=>c.traits.some(t=>re.test(t.name));
+
+/* ================= state ================= */
+let S;
+function freshState(){
+  const b=JSON.parse(JSON.stringify(SHEET_STATE));
+  b.plans={p1:{},p2:{}};b.away=[];b.cmp={};
+  b.stationState={};
+  for(const stn of STATIONS){
+    const syn=(b.stations||{})[stn.id]||{};
+    b.stationState[stn.id]={cond:syn.cond??stn.cond??100,abundance:syn.abundance??80,
+      powerOpt:false,prio:1,on:true,queue:syn.queue||"",banked:syn.banked||0,need:syn.need||100,progress:syn.progress||0};
+  }
+  const inv=b.inventory||{};
+  const parse2=k=>{const m=/([\d.]+)\s*\((\d+)\)/.exec(String(inv[k]||""));return m?[+m[1],+m[2]]:[num(inv[k]),0]};
+  const [raw,rawCap]=parse2("Raw"),[clean,cleanCap]=parse2("Clean"),[pur,purCap]=parse2("Purified");
+  b.stock={fruit:num(inv["5 hunger fruit"]),mre:num(inv.MREs),raw,rawCap,clean,cleanCap,pur,purCap};
+  b.day=b.day??1;b.sheetDay=SHEET_STATE.day;b.phase="p1";b.applied={};
+  return b;
+}
+function num(v){const n=parseFloat(v);return isNaN(n)?0:n}
+const LS_KEY="oz_v2";
+function save(){localStorage.setItem(LS_KEY,JSON.stringify(S))}
+function load(){
+  try{const j=JSON.parse(localStorage.getItem(LS_KEY));
+    // compare the snapshot the save was built from, not S.day (New day advances that)
+    if(j&&(j.sheetDay??j.day)===SHEET_STATE.day&&j.source===SHEET_STATE.source&&j.plans){
+      j.sheetDay=SHEET_STATE.day;j.phase=j.phase||"p1";j.applied=j.applied||{};return j}
+  }catch(e){}
+  return freshState();           // stale snapshot or new sheet -> fresh
+}
+
+/* ================= cost / output ================= */
+const curA=()=>S.plans[S.phase];
+function opts(x){return S.stationState[x.id??x]}
+function calcOut(ci,stn,o){return stn.out(S.characters[ci],o??opts(stn),opts(stn))}
+function calcCost(ci,stn,co){         // co = co-workers array context (default: current plan incl. ci)
+  const c=S.characters[ci],ss=opts(stn);
+  if(co===undefined)co=curA()[stn.id]||[];
+  const out={_f:{},_notes:[]};
+  for(const[stat,die,flat]of(stn.cost?stn.cost(c):[])){
+    out[stat]=(out[stat]||0)+(die?evD(+die.slice(1),flat):flat);
+    out._f[stat]=(out._f[stat]?out._f[stat]+" + ":"")+fmtFlat(die,flat);
+  }
+  const steps=condSteps(ss);
+  if(stn.condF&&steps){out.fatigue=(out.fatigue||0)+stn.condF*steps;
+    out._f.fatigue=(out._f.fatigue||"0")+` +${stn.condF*steps}cond`}
+  const w=WEATHER_W[wx()]||{};
+  for(const k in w){if(k==="rand"){out._rand=(out._rand||0)+w.rand;out._notes.push(`+${w.rand} to two random statuses`)}
+    else if(k!=="raw")out[k]=(out[k]||0)+w[k]}
+  const others=co.filter(x=>x!==ci).length;
+  if(hasTrait(c,/LONER/i)&&others>0){
+    for(const k in out)if(typeof out[k]==="number")out[k]*=1.2;
+    out._notes.push("LONER +20% (sharing)");}
+  let accP=0;
+  if(!stn.rest){
+    accP=(+$("acc").value+HYDRA[c.hydration||"FULL"])/100;
+    if(hasTrait(c,/Overconfident/i)&&others===0){accP+=0.15;out._notes.push("Overconfident +15% (alone)")}
+    out._acc=accP;
+    if(stn.accInj){const dmg=accP*stn.accInj,key=stn.accSta||"injury";
+      out._accDmg=dmg;out._notes.push(`accident ${(accP*100).toFixed(0)}% → ~${dmg.toFixed(1)} ${key}`)}
+    const luckP=Math.max(0,100-(+$("luck").value+HYDRA[c.hydration||"FULL"])+1)/100;
+    out._luck=luckP;
+  }
+  if(stn.rest&&hasTrait(c,/CLAUSTROPHOBIC/i)){out.stress=(out.stress||0)+6;out._f.stress="+6";out._notes.push("Claustrophobic +6 stress")}
+  if(stn.rest){const over=Math.max(0,13.5-c.statuses.fatigue);if(over>0)out._notes.push(`${over.toFixed(1)} rest wasted (fatigue ${c.statuses.fatigue})`)}
+  return out;
+}
+function totalCost(cs){
+  return (cs.fatigue||0)+(cs.hunger||0)*1.2+(cs.injury||0)*2+(cs.stress||0)*1+(cs.plague||0)*1.5+(cs._rand||0)+(cs._accDmg||0)*2;
+}
+/* threshold warnings when projected statuses cross bands */
+function projWarn(ci,cost){
+  const c=S.characters[ci],w=[];
+  for(const k of["fatigue","injury","stress","hunger","plague"]){
+    const cur=c.statuses[k],p=cur+(cost[k]||0)+(cost._rand||0)/2;
+    if(p>=100)w.push(`<span class="dth">${k}→100+ DEATH RISK</span>`);
+    else{for(const[th,pen]of[[75,"−40%"],[50,"−20%"],[25,"−10%"]])
+      if(cur<th&&p>=th){w.push(`${k} ${cur}→~${Math.round(p)} ⚠${pen}`);break}}
+  }return w;
+}
+/* pairing bonuses evaluated on a whole assignment */
+function pairMult(stn,workers){ // Philippe's Look There: +25% resources for him & partners
+  return workers.length>1&&workers.some(i=>hasTrait(S.characters[i],/Look There/i))?1.25:1;
+}
+function stationNotes(stn,workers){
+  const n=[];
+  if(pairMult(stn,workers)>1&&Object.keys(refOut(stn)).some(k=>RES_KEYS.includes(k)))n.push("Look There: +25% resources");
+  workers.forEach(i=>{const c=S.characters[i];
+    if(hasTrait(c,/FIELD TECH/i)&&opts(stn).cond<80)n.push(`${c.name.split(" ")[0]} FIELD TECH: +20 cond instead of erosion`);
+    if(hasTrait(c,/EASILY BORED/i))n.push(stn.ida?`${c.name.split(" ")[0]} uses MENT/SCI ✓`:`${c.name.split(" ")[0]}: no MENT/SCI here — needs one today`);});
+  return n;
+}
+/* ================= Auto-suggest scoring ================= */
+const band=s=>s>=100?4:s>75?3:s>=50?2:s>=25?1:0;
+function distOf(entries){            // exact distribution of a sum of [die|null, flat] terms, each roll floored at 0
+  let d=[[0,1]];
+  for(const[die,flat]of entries){const n=die?+die.slice(1):0;
+    const faces=n?[...Array(n)].map((_,f)=>[Math.max(0,f+1+flat),1/n]):[[flat,1]];
+    d=d.flatMap(([a,p])=>faces.map(([b,q])=>[a+b,p*q]))}
+  return d;
+}
+/* expected strain of one shift from the real dice + accident odds: per-point weights + status-band crossings.
+   work = cost of status gains (LONER scales gains only); rest = value of Shelter fatigue recovery */
+function strainOf(ci,stn,shared){
+  const c=S.characters[ci],by={},add={},steps=condSteps(opts(stn));
+  for(const[k,die,flat]of(stn.cost?stn.cost(c):[]))(by[k]=by[k]||[]).push([die,flat]);
+  if(stn.condF&&steps)add.fatigue=stn.condF*steps;
+  const w=WEATHER_W[wx()]||{};
+  for(const k in w){if(k==="rand")STATUSES.forEach(s=>add[s]=(add[s]||0)+w.rand/STATUSES.length);else if(k!=="raw")add[k]=(add[k]||0)+w[k]}
+  if(stn.rest&&hasTrait(c,/CLAUSTROPHOBIC/i))add.stress=(add.stress||0)+6;
+  const mult=shared&&hasTrait(c,/LONER/i)?1.2:1,accK=stn.accSta||"injury";
+  const accP=stn.rest||!stn.accInj?0:(+$("acc").value+HYDRA[c.hydration||"FULL"])/100+(hasTrait(c,/Overconfident/i)&&!shared?.15:0);
+  let work=0,rest=0;
+  for(const k of STATUSES){const cur=c.statuses[k],sc=v=>VAL.perPoint[k]*v+VAL.band[band(cur+v)]-VAL.band[band(cur)];
+    let d=distOf(by[k]||[]).map(([v,p])=>[(v+(add[k]||0))*mult,p]);
+    if(k===accK&&accP)d=d.flatMap(([v,p])=>[[v,p*(1-accP)],[v+stn.accInj*mult,p*accP]]);
+    for(const[v,p]of d)work+=p*sc(v);
+    if(stn.rest&&k==="fatigue")for(let f=1;f<=6;f++)rest-=sc(-Math.min(cur,f+10))/6;
+  }
+  return {work,rest};
+}
+function needsCtx(){
+  const s=S.stock,need=S.characters.length*VAL.hungerPerNight,nights=(s.fruit*5+s.mre*20)/need;
+  const ws=opts("workshop"),fq=opts("forge").queue,wRaw=(WEATHER_W[wx()]||{}).raw||0;
+  return {fruit:5/need*VAL.foodUrgency.find(([n])=>nights<n)[1],
+    tank:s.rawCap?Math.max(0,s.rawCap-s.raw-wRaw):Infinity,lab:Math.max(0,ws.need-ws.banked),forge:!!fq&&fq!=="None"};
+}
+/* value of a station's combined output for a set of workers (before prio²) */
+function stationValue(stn,workers,N){
+  const pm=pairMult(stn,workers),sum={},miss=[];
+  for(const ci of workers){const o=calcOut(ci,stn);
+    for(const k in o){if(k==="cancel")miss.push(1-Math.min(100,o[k])/100);else sum[k]=(sum[k]||0)+o[k]*(RES_KEYS.includes(k)?pm:1)}}
+  let v=(sum.fruit||0)*N.fruit+(sum.wood||0)*VAL.wood+(sum.metal||0)*VAL.metal+Math.min(sum.rawWater||0,N.tank)*VAL.rawWater
+    +(sum.pSIG||0)*VAL.reveal+(N.forge?(sum.pForge||0)*VAL.progress:0);
+  if(sum.pWork)v+=Math.min(sum.pWork,N.lab)*VAL.progress+(N.lab>0&&sum.pWork>=N.lab?VAL.finishBonus:0);
+  if(miss.length)v+=(1-miss.reduce((a,b)=>a*b,1))*VAL.cancel;
+  return v;
+}
+
+/* reference output at skill-100 for absolute grade scale */
+const REFC={statuses:{injury:0,plague:0,stress:0,hunger:0,fatigue:0},hydration:"FULL",ignorePen:true,traits:[],
+  skills:Object.fromEntries(Object.values(DOMAINS).flat().map(k=>[k,{cur:100,max:100}]))};
+function refOut(stn){return stn.out(REFC,{powerOpt:false},{cond:100,abundance:100})}
+
+/* ================= grades ================= */
+function grade(r){const B=[[.9,"A+"],[.8,"A"],[.7,"A-"],[.6,"B+"],[.5,"B"],[.4,"B-"],[.3,"C+"],[.25,"C"],[.2,"C-"],[.15,"D+"],[.1,"D"],[.05,"D-"]];
+  for(const[t,l]of B)if(r>=t)return l;return "F"}
+function costGrade(t){const B=[[8,"A+"],[10,"A"],[11,"A-"],[12,"B+"],[13,"B"],[14,"B-"],[15,"C+"],[16,"C"],[17,"C-"],[18,"D+"],[19,"D"],[20,"D-"]];
+  for(const[x,l]of B)if(t<x)return l;return "F"}
+
+/* ================= render ================= */
+const $=id=>document.getElementById(id);
+const wx=()=>$("weather").value;
+let sel=-1;
+const STATUSES=["injury","plague","stress","hunger","fatigue"];
+const SABBR={injury:"INJ",plague:"PLA",stress:"STS",hunger:"HUN",fatigue:"FTG"};
+function badge(k,v){const cls=v>75?"p3":v>=50?"p2":v>=25?"p1":"ok";
+  const nxt=v>75?null:v>=50?75:v>=25?50:25;
+  return `<span class="st" title="${k} ${v}${nxt?` — ${(nxt-v).toFixed(0)} to next penalty`:" — max penalty"}">${SABBR[k]} <b class="${cls}">${Math.round(v)}</b></span>`}
+
+function render(){
+  $("day").textContent=S.day??"–";$("phase").value=S.phase;
+  if(document.activeElement!==$("power"))$("power").value=S.power.current;
+  const A=curA(),used={};for(const id in A)for(const ci of A[id])used[ci]=id;
+  $("roster").innerHTML=S.characters.map((c,i)=>{
+    const away=S.away.includes(i),sid=used[i];
+    let prj="";
+    if(sid!==undefined){const stn=st(sid),cs=calcCost(i,stn),w=projWarn(i,cs);
+      const d=["fatigue","hunger","injury","stress","plague"].filter(k=>cs[k])
+        .map(k=>`${SABBR[k]}+${(+cs[k]).toFixed(0)}`).join(" ");
+      prj=`<div class="prj">→ ${sname(stn)} ${d?`<span style="color:var(--warn)">${d}</span>`:""}${w.length?' <span class="wn">'+w.join(" · ")+"</span>":""}</div>`;}
+    return `<div class="char ${sel===i?"sel":""} ${away?"away":""}" data-i="${i}">
+      <div><span class="nm">${c.name}</span> <span class="arch">${c.archetype}</span>
+      <span class="btns"><button class="mini" data-act="msn" data-i="${i}" title="toggle on-mission">${away?"✈ on mission":"msn"}</button>
+      <button class="mini" data-act="edit" data-i="${i}" title="edit stats">⚙</button></span></div>
+      <div class="stats">${Object.entries(c.statuses).map(([k,v])=>badge(k,v)).join("")}
+      <span class="hydra" title="hydration — modifies accident/luck rolls">${c.hydration}</span>
+      ${c.ignorePen?'<span class="st" title="ignoring status penalties"><b class="p1">NO PEN</b></span>':""}</div>
+      <div class="tag">${c.traits.map(t=>t.name).join(" · ")}${c.conditions.length?" — "+c.conditions.join("; "):""}</div>
+      ${prj}</div>`}).join("");
+  renderStations();renderGrades();renderNeeds();renderTotals();renderResolve();save();
+}
+
+function renderStations(){
+  const A=curA();
+  $("stations").innerHTML=STATIONS.map(stn=>{
+    const ss=opts(stn),assigned=A[stn.id]||[];
+    const open=ss.on&&(stn.rest||assigned.length<stn.slots);
+    const slotsHtml=stn.slots>20
+      ?`<div class="slots">${assigned.map(ci=>chip(stn,ci)).join("")}<div class="slot" data-st="${stn.id}">+ rest</div></div>`
+      :`<div class="slots">${[...Array(stn.slots)].map((_,k)=>assigned[k]!=null?chip(stn,assigned[k])
+         :`<div class="slot" data-st="${stn.id}">empty</div>`).join("")}</div>`;
+    let prev="";
+    if(sel>=0&&!S.away.includes(sel)&&open){
+      const o=calcOut(sel,stn),cs=calcCost(sel,stn,assigned.includes(sel)?assigned:[...assigned,sel]);
+      const pm=pairMult(stn,[...assigned.filter(x=>x!==sel),sel]);
+      const boosted=pm>1&&Object.keys(o).some(k=>RES_KEYS.includes(k));
+      const oStr=Object.entries(o).map(([k,v])=>`${OUT_LBL[k]||k} ${v>=0?"+":""}${+(v*(RES_KEYS.includes(k)?pm:1)).toFixed(1)}`).join(", ")||"—";
+      const cStr=["fatigue","hunger","injury","stress","plague"].filter(k=>cs[k])
+        .map(k=>`${k} <span class="f">${cs._f[k]}</span> ~${(+cs[k]).toFixed(1)}`).join(", ")||"none";
+      const w=projWarn(sel,cs);
+      prev=`<div class="preview">${S.characters[sel].name} → <b>${oStr}</b>${boosted?" (Look There ×1.25)":""} · cost: ${cStr}
+        ${cs._acc!=null?` · <span class="f">acc ${(cs._acc*100).toFixed(0)}% / luck ${(cs._luck*100).toFixed(0)}%</span>`:""}
+        ${cs._notes.length?` · <span class="wn">${cs._notes.join(" · ")}</span>`:""}
+        ${w.length?` · <span class="wn">${w.join(" · ")}</span>`:""}</div>`;
+    }
+    const cmp=S.cmp[stn.id]?cmpTable(stn):"";
+    const notes=stationNotes(stn,assigned);
+    return `<div class="station ${ss.on?"":"off"} ${sel>=0&&open?"cand":""}" data-st="${stn.id}">
+      <div class="stn-head"><span class="name">${stn.name}</span>${slotsHtml}
+        <label class="meta">cond <input type="number" class="condIn" data-st="${stn.id}" value="${ss.cond}" style="width:48px"></label>
+        ${stn.abund?`<label class="meta">abund <input type="number" class="abIn" data-st="${stn.id}" value="${ss.abundance}" style="width:48px"></label>`:""}
+        ${stn.power?`<span class="meta">−${stn.power}⚡</span>`:""}
+        ${stn.powerOpt?`<label class="meta"><input type="checkbox" class="poIn" data-st="${stn.id}" ${ss.powerOpt?"checked":""}> ${stn.powerOpt.label}</label>`:""}
+        <label class="meta">prio <input type="number" class="prio" min="0" max="3" data-st="${stn.id}" value="${ss.prio}"></label>
+        <label class="meta"><input type="checkbox" class="onIn" data-st="${stn.id}" ${ss.on?"checked":""}> run</label>
+        <button class="mini" data-cmp="${stn.id}">${S.cmp[stn.id]?"hide":"compare"}</button></div>
+      <div class="meta">${stn.note||""}${stn.id==="sigint"&&ss.progress!=null?` · <b>${ss.progress}/${ss.need}</b>`:""}${ss.banked?` · banked <b>${ss.banked}/${ss.need}</b>`:""}${notes.length?` · <span class="warnline">${notes.join(" · ")}</span>`:""}</div>
+      ${prev}${cmp}<details><summary>rules</summary>${stn.rules}</details></div>`}).join("");
+}
+function chip(stn,ci){return `<div class="slot filled" data-st="${stn.id}" data-ci="${ci}">${S.characters[ci].name.split(" ")[0]}<span class="rm" data-st="${stn.id}" data-ci="${ci}">✕</span></div>`}
+function cmpTable(stn){
+  const ref=refOut(stn);
+  const rows=S.characters.map((c,i)=>{if(S.away.includes(i))return"";
+    const o=calcOut(i,stn),cs=calcCost(i,stn,[]),w=projWarn(i,cs);
+    const ov=Object.entries(o).map(([k,v])=>`${OUT_LBL[k]||k} ${+v.toFixed(1)}`).join(" ");
+    const cv=["fatigue","hunger","injury","stress","plague"].filter(k=>cs[k]).map(k=>`${k.slice(0,3)}~${(+cs[k]).toFixed(0)}`).join(" ")||"—";
+    const b=grade(Object.entries(o).reduce((s,[k,v])=>s+Math.abs(v)/(ref[k]||1),0));
+    return `<tr><td class="l">${c.name.split(" ")[0]}</td><td>${ov}</td><td>${cv}</td><td>${cs._acc!=null?(cs._acc*100).toFixed(0)+"%":"—"}</td><td>${b}/${costGrade(totalCost(cs))}</td><td class="l" style="color:var(--warn)">${[...cs._notes,...w].join("; ")}</td></tr>`}).join("");
+  return `<table class="cmpt"><tr><th>who</th><th>output</th><th>cost</th><th>acc</th><th>grade</th><th>notes</th></tr>${rows}</table>`;
+}
+
+const GRADE_KEY={"Generator Bike":"Gen. Bike (--/AGI)","Water Tanks":"Water (--/STR+CON)","The Workshop":"Workshop (CRF+COMP/--)","SIGINT":"SIGINT (SCAV/COMP)","Hydroponics":"Hydroponics","Logging":"Logging (CON/AGI)","Iron Processing":"Iron (STR / DEX)","Lookout Station":"Lookout (PER / FLD)"};
+function renderGrades(){
+  const names=S.characters.map(c=>c.name.split(" ")[0]);
+  const rows=STATIONS.filter(s=>!s.rest).map(stn=>{
+    const ref=refOut(stn),sh=S.sheetGrades?.[GRADE_KEY[stn.name]];
+    return `<tr><td class="l">${stn.name}</td>`+S.characters.map((c,i)=>{
+      if(S.away.includes(i))return"<td>—</td>";
+      const o=calcOut(i,stn),b=grade(Object.entries(o).reduce((s,[k,v])=>s+Math.abs(v)/(ref[k]||1),0));
+      const cg=costGrade(totalCost(calcCost(i,stn,[])));
+      const tt=Object.entries(o).map(([k,v])=>`${OUT_LBL[k]||k} ${(+v).toFixed(1)}`).join(" ")+` · cost ${totalCost(calcCost(i,stn,[])).toFixed(1)}`;
+      return `<td title="${tt}">${b}/${cg}${sh?`<span class="sh">${sh[i]}</span>`:""}</td>`}).join("")+"</tr>"});
+  $("grades").innerHTML=`<table><tr><th>station</th>${names.map(n=>`<th>${n}</th>`).join("")}</tr>${rows.join("")}</table>`;
+}
+
+function renderNeeds(){
+  const s=S.stock,ws=opts("workshop"),sg=opts("sigint"),fg=opts("forge");
+  const food=s.fruit*5+s.mre*20,need=S.characters.length*20,nights=(food/need);
+  $("needs").innerHTML=`
+    <span>Food: <input type="number" class="stk" data-k="fruit" value="${s.fruit}">fruit+<input type="number" class="stk" data-k="mre" value="${s.mre}" style="width:40px">MRE = <b class="${nights<1.5?"low":""}">${food} hunger ≈ ${nights.toFixed(1)} nights</b> (need ${need}/night)</span>
+    <span>Water: raw <input type="number" class="stk" data-k="raw" value="${s.raw}">/${s.rawCap} · clean <input type="number" class="stk" data-k="clean" value="${s.clean}">/${s.cleanCap} · purified <input type="number" class="stk" data-k="pur" value="${s.pur}"></span>
+    <span>Lab banked <input type="number" class="stk" data-k2="workshop" data-k="banked" value="${ws.banked}">/${ws.need} → <b>${Math.max(0,ws.need-ws.banked)} left</b>${fg.queue&&fg.queue!=="None"?` · Forge queue: ${fg.queue}`:' · <span class="low">Forge queue empty</span>'}</span>
+    <span>SIGINT <input type="number" class="stk" data-k2="sigint" data-k="progress" value="${sg.progress}">/${sg.need}</span>`;
+}
+
+/* power over one phase: bike resolves first (capped at max), station costs are per station, not per worker */
+function powerFlow(A){
+  let spend=0,gen=0;
+  for(const[sid,arr]of Object.entries(A)){if(!arr.length)continue;const stn=st(sid);
+    spend+=(stn.power||0)+(opts(sid).powerOpt?stn.powerOpt.cost:0);
+    for(const ci of arr)gen+=calcOut(ci,stn).power||0}
+  const pool=Math.min(S.power.max??5,S.power.current+gen);
+  return {pool,spend,left:pool-spend};
+}
+function renderTotals(){
+  const A=curA(),t={},cancels=[],costLines=[];
+  for(const[sid,arr]of Object.entries(A)){
+    const stn=st(sid);if(!arr.length)continue;
+    const pm=pairMult(stn,arr);
+    for(const ci of arr){
+      const o=calcOut(ci,stn),cs=calcCost(ci,stn,arr);
+      for(const k in o){let v=o[k];if(RES_KEYS.includes(k))v*=pm;
+        if(k==="power")continue;if(k==="cancel")cancels.push(v);else t[k]=(t[k]||0)+v;}
+      const c=S.characters[ci];
+      costLines.push(`${c.name.split(" ")[0]} ${["fatigue","hunger","injury","stress","plague"].filter(k=>cs[k]).map(k=>`${SABBR[k]}+${(+cs[k]).toFixed(0)}`).join(" ")||"—"}`);
+    }
+  }
+  const wRaw=(WEATHER_W[wx()]||{}).raw||0;
+  const {pool,spend,left}=powerFlow(A);
+  t.rawWater=(t.rawWater||0)+wRaw;
+  const capS=S.stock.rawCap?` (stock ${+S.stock.raw+t.rawWater}/${S.stock.rawCap}${+S.stock.raw+t.rawWater>S.stock.rawCap?" ⚠over":""})`:"";
+  const parts=[`<div>Power: <b class="${left<0?"neg":left===0?"wn":""}">${left}</b> <span style="color:var(--dim)">(${pool}−${spend})</span></div>`];
+  if(t.pWork!=null){const rem=Math.max(0,opts("workshop").need-opts("workshop").banked);
+    parts.push(`<div>Lab prog: <b>+${t.pWork.toFixed(0)}</b> <span style="color:var(--dim)">(need ${rem}${t.pWork>rem?` — <span class="wn">${(t.pWork-rem).toFixed(0)} wasted</span>`:""})</span></div>`);delete t.pWork}
+  if(t.pSIG!=null){const rem=Math.max(0,opts("sigint").need-opts("sigint").progress);
+    parts.push(`<div>SIGINT: <b>+${t.pSIG.toFixed(0)}</b> <span style="color:var(--dim)">(need ${rem}${t.pSIG>=rem?" — scan completes, excess carries":""})</span></div>`);delete t.pSIG}
+  if(cancels.length){const p=(1-cancels.reduce((a,v)=>a*(1-Math.min(100,v)/100),1))*100;
+    parts.push(`<div>Cancel: <b>${p.toFixed(1)}%</b> <span style="color:var(--dim)">(${cancels.map(v=>v.toFixed(0)+"%").join(" + ")})</span></div>`)}
+  for(const k in t){if(!t[k])continue;
+    if(k==="rawWater"){parts.push(`<div>Raw H₂O: <b>+${(+t[k]).toFixed(1)}</b><span style="color:var(--dim)">${capS}</span></div>`)}
+    else parts.push(`<div>${OUT_LBL[k]||k}: <b>${t[k]>0&&k!=="fatigue"?"+":""}${(+t[k]).toFixed(1)}</b></div>`)}
+  const wu=Object.entries(A).reduce((n,[id,a])=>n+(st(id).rest?0:a.length),0);
+  parts.push(`<div>Workers: <b>${wu}/${$("cap").value}</b></div>`);
+  if(left<0)parts.push(`<div class="neg">⚠ power deficit</div>`);
+  if(wRaw)parts.push(`<div style="color:var(--dim)">incl. +${wRaw} weather water</div>`);
+  const aw=S.autoWhy;
+  if(aw&&aw.phase===S.phase&&aw.plan===JSON.stringify(A))parts.push(`<div style="color:var(--dim)" title="Auto-suggest value breakdown (README: How Auto-suggest scores)">Auto: ${aw.text}</div>`);
+  parts.push(`<div style="color:var(--dim)">${costLines.join(" · ")||"no assignments"}</div>`);
+  $("totals").innerHTML=parts.join("");
+}
+
+/* outputs Apply credits back into the needs strip (wood/metal aren't tracked here — the sheet has them) */
+const CREDIT={
+  fruit:v=>{S.stock.fruit+=v},
+  rawWater:v=>{S.stock.raw=Math.min(S.stock.rawCap||Infinity,S.stock.raw+v)},
+  pWork:v=>{const w=opts("workshop");w.banked=Math.min(w.need,w.banked+v)},           // excess wasted: nothing queued after the Lab
+  pSIG:v=>{const g=opts("sigint");g.progress+=v;while(g.progress>=g.need){g.progress-=g.need;g.need+=5}}};   // excess carries; each scan +5 need
+function renderResolve(){
+  const A=curA(),rows=[];
+  for(const[sid,arr]of Object.entries(A)){const stn=st(sid),pm=pairMult(stn,arr);
+    for(const ci of arr){
+    const cs=calcCost(ci,stn,arr),c=S.characters[ci],o=calcOut(ci,stn),k=Object.keys(o)[0],amt=(o[k]||0)*(RES_KEYS.includes(k)?pm:1);
+    const rest=stn.rest?o.fatigue:0;   // Shelter recovery lives in out(), not cost()
+    const out=stn.rest?"—":CREDIT[k]?`<input type="number" class="rso" data-k="${k}" value="${+amt.toFixed(1)}" title="${OUT_LBL[k]} produced">`
+      :`<span style="color:var(--dim)">${k==="cancel"?`${amt.toFixed(0)}% cancel chance`:`${+amt.toFixed(1)} ${OUT_LBL[k]||k}`}</span>`;
+    rows.push(`<tr><td class="l">${c.name.split(" ")[0]} <span style="color:var(--dim)">@${sname(stn)}</span></td>
+      ${STATUSES.map(k=>`<td><input type="number" class="rsv" data-i="${ci}" data-k="${k}" value="${Math.round((cs[k]||0)+(k==="fatigue"?rest:0))}" title="${k} rolled"></td>`).join("")}<td>${out}</td></tr>`)}}
+  const applied=S.applied[S.phase];
+  $("resolve").innerHTML=applied
+    ?`<span class="kbd">${S.phase==="p1"?"Phase 1 applied ✓ — plan Phase 2":"Phase 2 applied ✓ — press New day"}</span>`
+    :rows.length
+    ?`<table><tr><th></th>${STATUSES.map(k=>`<th>${SABBR[k]}</th>`).join("")}<th>OUT</th></tr>${rows.join("")}</table>
+      <div class="rowline"><button class="primary mini" id="apply">Apply &amp; next phase</button>
+      <span class="kbd">enter actual rolls &amp; output; statuses, stock, Lab/SIGINT update</span></div>`
+    :`<span class="kbd">assign workers, then record real dice here</span>`;
+  if(rows.length&&!applied)$("apply").onclick=()=>{
+    const left=powerFlow(A).left,wRaw=(WEATHER_W[wx()]||{}).raw||0;
+    const outs=[...document.querySelectorAll(".rso")].map(inp=>[inp.dataset.k,+inp.value]);
+    document.querySelectorAll(".rsv").forEach(inp=>{const s=S.characters[+inp.dataset.i].statuses;
+      s[inp.dataset.k]=Math.max(0,s[inp.dataset.k]+ +inp.value)});
+    outs.forEach(([k,v])=>CREDIT[k](v));if(wRaw)CREDIT.rawWater(wRaw);   // weather water: once per phase
+    S.power.current=Math.max(0,left);
+    S.applied[S.phase]=true;S.phase="p2";sel=-1;render();   // applied phases lose their Apply button
+  };
+}
+
+/* ================= interactions ================= */
+$("roster").addEventListener("click",ev=>{
+  const btn=ev.target.closest("[data-act]");
+  if(btn){const i=+btn.dataset.i;
+    if(btn.dataset.act==="edit")openEditor(i);
+    else{const j=S.away.indexOf(i);if(j>=0)S.away.splice(j,1);else{S.away.push(i);
+      for(const p in S.plans)for(const id in S.plans[p])S.plans[p][id]=S.plans[p][id].filter(x=>x!==i)}render()}
+    return}
+  const card=ev.target.closest(".char");if(!card)return;
+  const i=+card.dataset.i;sel=sel===i?-1:i;render();
+});
+$("stations").addEventListener("click",ev=>{
+  const rm=ev.target.closest(".rm");
+  if(rm){const{st: sid,ci}=rm.dataset;const A=curA();A[sid]=A[sid].filter(x=>x!==+ci);render();return}
+  const cb=ev.target.closest("[data-cmp]");
+  if(cb){const id=cb.dataset.cmp;S.cmp[id]=!S.cmp[id];render();return}
+  const slot=ev.target.closest(".slot");if(!slot||sel<0||S.away.includes(sel))return;
+  const sid=slot.dataset.st,stn=st(sid),A=curA();
+  if(A[sid]&&A[sid].includes(sel)){A[sid]=A[sid].filter(x=>x!==sel);render();return} // click own chip = remove
+  const already=Object.entries(A).some(([id,a])=>!st(id).rest&&a.includes(sel));   // job→job move: no new worker
+  const swap=slot.dataset.ci!=null&&!stn.rest;                                       // replacing someone: no new worker
+  if(!stn.rest&&workersIn(A)>=+$("cap").value&&!already&&!swap)return flash(slot,"worker cap reached");
+  for(const id in A)A[id]=A[id].filter(x=>x!==sel);
+  if(slot.dataset.ci!=null&&!stn.rest&&stn.slots===1){A[sid]=[sel]}           // swap into filled slot
+  else{(A[sid]=A[sid]||[]);if(slot.dataset.ci!=null){const k=A[sid].indexOf(+slot.dataset.ci);if(k>=0)A[sid][k]=sel;else A[sid].push(sel)}
+      else if(stn.rest||A[sid].length<stn.slots)A[sid].push(sel)}
+  render();
+});
+function workersIn(A){return Object.entries(A).reduce((n,[id,a])=>n+(st(id).rest?0:a.length),0)}
+function flash(elm,msg){elm.style.borderColor="var(--bad)";elm.textContent=msg;setTimeout(render,900)}
+$("stations").addEventListener("change",ev=>{
+  const t=ev.target,sid=t.dataset.st;if(!sid)return;const ss=opts(sid);
+  if(t.classList.contains("condIn"))ss.cond=+t.value;
+  if(t.classList.contains("abIn"))ss.abundance=+t.value;
+  if(t.classList.contains("poIn"))ss.powerOpt=t.checked;
+  if(t.classList.contains("prio"))ss.prio=+t.value;
+  if(t.classList.contains("onIn")){ss.on=t.checked;if(!t.checked)curA()[sid]=[]}
+  render();
+});
+$("needs").addEventListener("change",ev=>{
+  const t=ev.target;if(!t.classList.contains("stk"))return;
+  if(t.dataset.k2)opts(t.dataset.k2)[t.dataset.k]=+t.value;else S.stock[t.dataset.k]=+t.value;render();
+});
+$("power").addEventListener("change",ev=>{S.power.current=+ev.target.value;render()});
+$("weather").addEventListener("change",()=>{S.weather=wx();render()});
+$("phase").addEventListener("change",()=>{S.phase=$("phase").value;render()});
+["acc","luck","cap"].forEach(id=>$(id).addEventListener("change",render));
+$("clear").onclick=()=>{S.plans[S.phase]={};render()};
+$("reset").onclick=()=>{localStorage.removeItem(LS_KEY);S=freshState();render()};
+$("newday").onclick=()=>{S.day=+S.day+1;S.plans={p1:{},p2:{}};S.applied={};S.away=[];S.power.current=S.power.base;S.phase="p1";sel=-1;render()};
+$("copy").onclick=()=>{
+  const lines=[`Day ${S.day} — ${$("phase").selectedOptions[0].text} (${wx()})`];
+  for(const stn of STATIONS){const a=curA()[stn.id]||[];if(a.length)lines.push(`${stn.name}: ${a.map(i=>S.characters[i].name).join(", ")}`)}
+  const idle=S.characters.map((c,i)=>i).filter(i=>!Object.values(curA()).flat().includes(i)&&!S.away.includes(i));
+  if(idle.length)lines.push(`Unassigned: ${idle.map(i=>S.characters[i].name).join(", ")}`);
+  navigator.clipboard.writeText(lines.join("\n")).then(()=>{$("copy").textContent="Copied!";setTimeout(()=>$("copy").textContent="Copy plan",1200)});
+};
+
+/* ---------- power-aware exhaustive optimizer ----------
+   plan value = Σ prio²·stationValue − Σ strain + rest + Ida bonus + Phase-1 power reserve (see VAL).
+   Every station × worker-set value is precomputed, so the search loop is plain arithmetic. */
+$("auto").onclick=()=>{
+  const cap=+$("cap").value,P=S.phase,N=needsCtx(),av=S.characters.map((c,i)=>i).filter(i=>!S.away.includes(i)),n=av.length;
+  const stns=STATIONS.filter(s=>opts(s.id).on&&opts(s.id).prio>0),ns=stns.length;   // prio 0 = off
+  const bored=ci=>hasTrait(S.characters[ci],/EASILY BORED/i);
+  const boredDone=P==="p2"&&Object.entries(S.plans.p1).some(([sid,a])=>st(sid).ida&&a.some(bored));
+  const NET=[],GEN=[],COST=[];
+  stns.forEach((stn,s)=>{const pr=opts(stn.id).prio**2;NET[s]=new Float64Array(1<<n);GEN[s]=new Float64Array(1<<n);
+    COST[s]=(stn.power||0)+(stn.powerOpt&&opts(stn.id).powerOpt?stn.powerOpt.cost:0);
+    if(stn.rest)return;                                   // resting is valued per person below
+    for(let m=1;m<1<<n;m++){const ws=av.filter((_,k)=>m>>k&1);if(ws.length>stn.slots)continue;
+      let v=pr*stationValue(stn,ws,N);
+      for(const ci of ws){v-=strainOf(ci,stn,ws.length>1).work;if(stn.ida&&!boredDone&&bored(ci))v+=VAL.bored}
+      NET[s][m]=v;GEN[s][m]=ws.reduce((g,ci)=>g+(calcOut(ci,stn).power||0),0)}});
+  const sh=stns.findIndex(s=>s.rest);
+  const REST=av.map(ci=>{if(sh<0)return 0;const r=strainOf(ci,stns[sh],false);return opts("shelter").prio**2*r.rest-r.work});
+  // prune k@s if adding k never raises the station's value (any co-workers) nor makes power: idle is never worse
+  const SZ=new Int8Array(1<<n);for(let m=1;m<1<<n;m++)SZ[m]=SZ[m>>1]+(m&1);
+  const OK=av.map((_,k)=>stns.map((stn,s)=>{if(stn.rest)return false;
+    for(let m=0;m<1<<n;m++){const mk=m|1<<k;if(m===mk||SZ[mk]>stn.slots)continue;
+      if(NET[s][mk]-NET[s][m]>1e-9||GEN[s][mk]>GEN[s][m])return true}
+    return false}));
+  const p0=S.power.current,pmax=S.power.max??5,resW=P==="p1"?VAL.powerReserve*Math.max(1,opts("bike").prio)**2:0;
+  const mask=new Int32Array(ns),cnt=new Int32Array(ns),pick=new Int32Array(n);
+  let best={v:-Infinity},workers=0,val=0,spend=0,gen=0;  // running totals, updated as workers are placed/removed
+  (function dfs(k){
+    if(k===n){const left=Math.min(pmax,p0+gen)-spend;     // bike resolves first; costs are per station
+      if(left<0)return;
+      const v=val+resW*left;if(v>best.v+1e-9)best={v,left,pick:pick.slice()};return}
+    pick[k]=-1;dfs(k+1);                                  // idle
+    if(sh>=0&&REST[k]>0){pick[k]=sh;val+=REST[k];dfs(k+1);val-=REST[k]}
+    if(workers>=cap)return;
+    for(let s=0;s<ns;s++){if(s===sh||cnt[s]>=stns[s].slots||!OK[k][s])continue;
+      const o=mask[s],m=o|1<<k,dv=NET[s][m]-NET[s][o],dg=GEN[s][m]-GEN[s][o],dc=o?0:COST[s];
+      pick[k]=s;mask[s]=m;cnt[s]++;workers++;val+=dv;gen+=dg;spend+=dc;
+      dfs(k+1);
+      val-=dv;gen-=dg;spend-=dc;workers--;cnt[s]--;mask[s]=o}
+  })(0);
+  const A={},why=[];
+  stns.forEach((stn,s)=>{const ks=av.map((_,k)=>k).filter(k=>best.pick[k]===s);if(!ks.length)return;
+    A[stn.id]=ks.map(k=>av[k]);
+    const v=s===sh?ks.reduce((t,k)=>t+REST[k],0):NET[s][ks.reduce((m,k)=>m|1<<k,0)];
+    why.push(`${sname(stn)} ${v>=0?"+":""}${v.toFixed(2)}`)});
+  if(resW*best.left)why.push(`power reserve +${(resW*best.left).toFixed(2)}`);
+  S.plans[P]=A;S.autoWhy={phase:P,plan:JSON.stringify(A),text:`${why.join(" · ")||"nothing worth doing"} = ${best.v.toFixed(2)}`};render();
+};
+
+/* ---------- character editor ---------- */
+function openEditor(i){
+  const c=S.characters[i];
+  const skillRows=Object.entries(c.skills).map(([k,v])=>`<label>${k}<input type="number" data-k="${k}" value="${v.cur}"></label>`).join("");
+  const stRows=STATUSES.map(k=>`<label>${k}<input type="number" data-s="${k}" value="${c.statuses[k]}"></label>`).join("");
+  $("modalBox").innerHTML=`<h2>${c.name} — ${c.archetype}</h2>
+    <div class="rowline"><label>Hydration <select id="hsel">${["FULL","LIGHT","MODERATE","SEVERE"].map(h=>`<option ${h===c.hydration?"selected":""}>${h}</option>`).join("")}</select></label>
+    <label><input type="checkbox" id="awayC" ${S.away.includes(i)?"checked":""}> on mission</label>
+    <label><input type="checkbox" id="nopC" ${c.ignorePen?"checked":""}> ignore status penalties (CIGS etc.)</label></div>
+    <h2 style="margin-top:10px">Statuses</h2><div class="grid">${stRows}</div>
+    <h2 style="margin-top:10px">Skills (current)</h2><div class="grid">${skillRows}</div>
+    <h2 style="margin-top:10px">Traits &amp; conditions</h2>
+    <div style="font-size:12px;color:var(--dim)">${c.traits.map(t=>`<div><b>${t.name}</b> — ${t.text}</div>`).join("")}${c.conditions.map(x=>`<div>• ${x}</div>`).join("")}</div>
+    <div class="rowline"><button class="primary" id="saveC">Done</button></div>`;
+  $("modal").classList.add("open");
+  $("saveC").onclick=()=>{
+    $("modalBox").querySelectorAll("[data-s]").forEach(inp=>c.statuses[inp.dataset.s]=+inp.value);
+    $("modalBox").querySelectorAll("[data-k]").forEach(inp=>c.skills[inp.dataset.k].cur=+inp.value);
+    c.hydration=$("hsel").value;c.ignorePen=$("nopC").checked;
+    const was=S.away.includes(i);
+    if($("awayC").checked&&!was){S.away.push(i);for(const p in S.plans)for(const id in S.plans[p])S.plans[p][id]=S.plans[p][id].filter(x=>x!==i)}
+    if(!$("awayC").checked&&was)S.away.splice(S.away.indexOf(i),1);
+    $("modal").classList.remove("open");render();
+  };
+}
+$("modal").addEventListener("click",ev=>{if(ev.target.id==="modal")$("modal").classList.remove("open")});
+
+/* ---------- boot ---------- */
+S=load();
+$("weather").innerHTML=WEATHERS.map(w=>`<option ${w===S.weather?"selected":""}>${w}</option>`).join("");
+$("power").value=S.power.current;
+render();
+</script>
+</body>
+</html>
