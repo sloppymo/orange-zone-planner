@@ -68,7 +68,10 @@
   .nrow{display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:6px}
   .nm{font:400 23px/1.05 var(--f-hand);color:var(--ink);filter:url(#ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .sts{display:flex;flex-wrap:wrap;gap:0 11px;margin-top:2px;font:14px/1.1 var(--f-sc);color:var(--print2)}
+  .sts>span{display:inline-flex;align-items:center}
   .sts b{margin-left:3px;font:400 15px/1 var(--f-hand);color:var(--ink)}
+  .ic{flex:none;width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .sts .t1 b{color:var(--t1);font-weight:700} .sts .t2 b{color:var(--t2);font-weight:700} .sts .t3 b{color:var(--t3);font-weight:700}
   .jrow{display:grid;grid-template-columns:1fr 1fr}
   .who{display:none}
@@ -158,11 +161,19 @@
   .acts button:hover{color:var(--ribbon);text-decoration-color:currentColor}
   .acts button:focus-visible{outline:2px dashed var(--ribbon);outline-offset:4px}
 
-  .left .sts{gap:0 8px}
+  .left .sts{gap:0 10px}
+  /* keys: what the grade halves and status icons mean */
+  .left .colh>span{display:flex;align-items:flex-end;justify-content:space-between;gap:6px}
+  .gkey{display:flex;flex-direction:column;align-items:flex-end;gap:3px;margin-right:4px;font:italic 14.5px/1 var(--f-print);color:var(--print2);white-space:nowrap}
+  .key{display:flex;flex-wrap:wrap;gap:4px 14px;margin:14px 0 0;font:14px/1.2 var(--f-sc);color:var(--print2)}
+  .key>span{display:inline-flex;align-items:center;gap:4px}
+  .key .gk{display:none;flex-basis:100%}
   @media (max-width:1240px){
     :root{--gc:30px}
     .left .nm{font-size:21px}
-    .left .sts{gap:0 6px;font-size:12.5px}
+    .left .sts{gap:0 8px;font-size:12.5px}
+    .gkey{display:none}
+    .key .gk{display:inline}
     .left .sts b{margin-left:2px;font-size:14px}
   }
   @media (max-width:860px){
@@ -201,6 +212,12 @@
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- status icons, drawn on a 16-unit grid as pen strokes -->
+  <symbol id="i-injury" viewBox="0 0 16 16"><path d="M6 2h4v4h4v4h-4v4H6v-4H2V6h4z"/></symbol>
+  <symbol id="i-plague" viewBox="0 0 16 16"><path d="M8 1.6c-3.3 0-5.6 2.3-5.6 5.4 0 1.8.8 3 2.1 3.7v3.1h7v-3.1c1.3-.7 2.1-1.9 2.1-3.7 0-3.1-2.3-5.4-5.6-5.4zM6.6 13.8v-1.7M9.4 13.8v-1.7"/><circle cx="5.8" cy="7.4" r="1.35" fill="currentColor" stroke="none"/><circle cx="10.2" cy="7.4" r="1.35" fill="currentColor" stroke="none"/><path d="M8 9.4l-.7 1.2h1.4z" fill="currentColor" stroke-width="1"/></symbol>
+  <symbol id="i-stress" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4"/><circle cx="5.7" cy="6.6" r=".95" fill="currentColor" stroke="none"/><circle cx="10.3" cy="6.6" r=".95" fill="currentColor" stroke="none"/><path d="M5.1 11.7c1.6-1.7 4.2-1.7 5.8 0"/></symbol>
+  <symbol id="i-hunger" viewBox="0 0 16 16"><path d="M3.5 1.5v4a1.75 1.75 0 0 0 3.5 0v-4M5.25 1.5v13M12 14.5v-13c-1.8 1-2.6 3.2-2.6 6H12"/></symbol>
+  <symbol id="i-fatigue" viewBox="0 0 16 16"><path d="M13.5 10.3A6 6 0 1 1 5.7 2.5a4.8 4.8 0 0 0 7.8 7.8z"/></symbol>
   <!-- roughens handwriting edges like ink soaking into paper -->
   <filter id="ink" x="-5%" y="-20%" width="110%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="2" seed="3" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="1.4" xChannelSelector="R" yChannelSelector="G"/></filter>
 </svg>
@@ -212,10 +229,11 @@
           <div class="rh">The Orange Zone</div>
           <div class="tabs" aria-label="Plan phase"><button data-rp="p1">Phase 1</button><button data-rp="p2">Phase 2</button></div>
           <div class="dayline"><span class="lbl">Day</span><span class="hand" id="day"></span></div>
-          <div class="colh"><span>Survivor</span><div class="gh" id="gh" aria-hidden="true"></div></div>
+          <div class="colh"><span>Survivor<em class="gkey" aria-hidden="true"><i>effectiveness</i><i>suitability</i></em></span><div class="gh" id="gh" aria-hidden="true"></div></div>
         </div>
         <div id="names"></div>
         <div class="lfoot"><div class="frow">Workers</div><div class="frow">Power</div></div>
+        <p class="key" id="key"></p>
         <span class="folio" id="folL"></span>
       </section>
       <section class="page right" id="right" aria-label="Jobs">
@@ -226,7 +244,7 @@
         <div id="rows"></div>
         <div class="tally" id="foot"></div>
         <ul class="flags" id="flags"></ul>
-        <p class="note">Grades are the sheet's benefit / cost for that survivor at that job.</p>
+        <p class="note">Grades read effectiveness / suitability for that survivor at that job (the sheet's benefit / cost).</p>
         <span class="folio" id="folR"></span>
         <button class="turn" id="next" aria-label="Next day"><span class="tl">Next day</span><span class="dog"></span></button>
       </section>
@@ -261,7 +279,8 @@ const job=id=>JOBS.find(j=>j.id===id);
 const GRID=JOBS.filter(j=>j.sheet);        // the graded jobs, one column each on the left page
 const PHASES=["p1","p2"];
 const WORKER_CAP=5;
-const STS=[["injury","Inj"],["plague","Pla"],["stress","Sts"],["hunger","Hun"],["fatigue","Ftg"]];
+const STS=[["injury","Injury"],["plague","Plague"],["stress","Stress"],["hunger","Hunger"],["fatigue","Fatigue"]];
+const icon=k=>`<svg class="ic" aria-hidden="true"><use href="#i-${k}"/></svg>`;
 const people=SHEET_STATE.characters;
 const PMAX=SHEET_STATE.power?.max??5, PBASE=SHEET_STATE.power?.base??3;
 const $=id=>document.getElementById(id);
@@ -350,17 +369,18 @@ function options(p,i){
 }
 const band=v=>v>75?"t3":v>=50?"t2":v>=25?"t1":"";
 const statusLine=c=>`<div class="sts">${STS.map(([k,a])=>{const v=Math.round(c.statuses[k]);
-  return `<span class="${band(v)}">${a}<b>${v}</b></span>`}).join("")}</div>`;
+  return `<span class="${band(v)}" title="${a} ${v}">${icon(k)}<span class="vh">${a}</span><b>${v}</b></span>`}).join("")}</div>`;
 function render(){
   const rp=S.rp||"p1";
   $("day").textContent=S.day;
+  $("key").innerHTML=`<span class="gk">Grades: effectiveness over suitability</span>`+STS.map(([k,a])=>`<span>${icon(k)}${a}</span>`).join("");
   $("folL").textContent=S.day*2;$("folR").textContent=S.day*2+1;
   document.querySelectorAll("[data-rp]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.rp===rp));
   $("gh").innerHTML=GRID.map(j=>`<span title="${esc(stationNote(j))}"><i>${j.col}</i></span>`).join("");
   /* the grade grid: a ring round the job each survivor has in the phase being planned */
   $("names").innerHTML=people.map((c,i)=>`<div class="nrow"><div class="nmb"><div class="nm">${esc(c.name)}</div>${statusLine(c)}</div>
     <div class="gg">${GRID.map(j=>{const g=grade(i,j)||["–","–"],on=S.plan[rp][i]===j.id,h=holders(rp,j.id,i),lock=!on&&j.slots>1&&h.length>=j.slots;
-      const tip=`${c.name} at ${j.name}, Phase ${rp[1]}: ${gradeText(g)}`+(on?" (click to take off)":lock?" (full)":h.length&&j.slots===1?`, replacing ${people[h[0]].name}`:"")
+      const tip=`${c.name} at ${j.name}, Phase ${rp[1]}: effectiveness ${g[0]}, suitability ${g[1]}`+(on?" (click to take off)":lock?" (full)":h.length&&j.slots===1?`, replacing ${people[h[0]].name}`:"")
         +hints(rp,i,j).map(x=>`\n${x[1]}`).join("");
       return `<button class="gc${on?" on":""}" data-j="${j.id}" data-i="${i}" aria-pressed="${on}" title="${esc(tip)}" aria-label="${esc(tip)}"${lock?" disabled":""}><span class="gv">${gradeHtml(g,"")}</span></button>`}).join("")}</div></div>`).join("");
   $("rows").innerHTML=people.map((c,i)=>`<div class="jrow"><div class="who"><div class="nm">${esc(c.name)}</div>${statusLine(c)}</div>

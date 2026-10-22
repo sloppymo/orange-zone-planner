@@ -19,12 +19,14 @@ it falls back to system fonts.)
 
 The page is drawn as an open ledger: survivors on the left page, their
 jobs across the spine on the right (on a phone the two pages stack).
-One row per survivor, with their current statuses from the sheet (numbers
-of 25 or more are coloured). Pick a job for Phase 1 and Phase 2 from each
+One row per survivor, with their current statuses from the sheet as small
+icons (injury, plague, stress, hunger, fatigue; a key at the foot of the
+left page names them, and numbers of 25 or more are coloured). Pick a job for Phase 1 and Phase 2 from each
 dropdown.
 
 - Each job shows that survivor's grade from the sheet's grade table, as
-  benefit / cost (`–` where the sheet has `--`). It appears in the
+  effectiveness / suitability, which is the sheet's benefit / cost (`–`
+  where the sheet has `--`). It appears in the
   dropdown list and, coloured, on the chosen job. The Forge, Rest and
   missions have no grade.
 - Jobs keep their slot limits: a full two-slot job is greyed out, and
@@ -43,7 +45,8 @@ dropdown.
   Ida with no Workshop, SIGINT, Hydroponics or Lookout job all day.
 - **The left page is a grade grid.** Each survivor's row has a column per
   graded job (Bike, Water, Workshop, SIGINT, Hydroponics, Logging, Iron,
-  Lookout), with the benefit grade over the cost grade. Read down a column
+  Lookout), with effectiveness over suitability (the key beside "Survivor" says so;
+  on narrower screens it moves to the key at the foot of the page). Read down a column
   to see who fits that job best. Hovering a column heading shows the
   station's stock, progress and condition. Hovering a cell shows the grade
   and any trait effect of working there.
