@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orange Zone Planner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#1a1e19; --panel:#232821; --panel2:#2d332a; --line:#394234; --line2:#4c5745;
+    --ink:#ece7d5; --dim:#a4a891; --faint:#7b8270;
+    --hz:#ff8a1f; --hz-ink:#231303;
+    --ok:#93b86b; --b1:#dcbc48; --b2:#e56d43; --b3:#e04866; --info:#86b6d8;
+    --f-body:"Barlow","Segoe UI","DejaVu Sans",system-ui,sans-serif;
+    --f-cond:"Barlow Condensed","DejaVu Sans Condensed","Arial Narrow",sans-serif;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--canvas)}
+  body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.45 var(--f-body);font-variant-numeric:tabular-nums}
+  button,select,input{font:inherit;color:inherit}
+  h2{font:600 21px/1.15 var(--f-cond);margin:0}
+  h3{font:600 17px/1.2 var(--f-cond);margin:20px 0 6px}
+  :focus-visible{outline:2px solid var(--info);outline-offset:2px}
+  input[type=number]{-moz-appearance:textfield;appearance:textfield}
+  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+  .btn{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:6px 13px;cursor:pointer;font-weight:500;white-space:nowrap}
+  .btn:hover{border-color:var(--dim)}
+  .btn.primary,.box button.primary{background:var(--hz);border:1px solid var(--hz);border-radius:6px;padding:6px 13px;color:var(--hz-ink);font-weight:700;cursor:pointer}
+  .btn.primary:hover{background:#ff9c40}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn.sm{padding:3px 10px;font-size:13px}
+  .btn.danger{border-color:var(--b3);color:#f4a6b6}
+  .ic{background:none;border:1px solid transparent;border-radius:5px;color:var(--faint);cursor:pointer;padding:0 6px;font-size:14px;line-height:22px}
+  .ic:hover{border-color:var(--line2);color:var(--ink)}
+  .ic.on{color:var(--info);border-color:var(--info)}
+  .num,.txt{background:transparent;border:0;border-bottom:1px dashed var(--line2);border-radius:0;color:var(--ink);font-weight:600;padding:0 2px}
+  .num{text-align:right;width:4ch}
+  .txt{width:10ch}
+  .num:hover,.txt:hover{border-bottom-color:var(--dim)}
+  .num:focus,.txt:focus{outline:none;border-bottom:1px solid var(--hz);background:var(--panel2)}
+  select{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:5px 8px}
+
+  /* top bar */
+  .top{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .mark{display:flex;align-items:center;gap:10px;font:700 25px/1 var(--f-cond);color:var(--hz);white-space:nowrap}
+  .mark::before{content:"";width:12px;height:25px;background:repeating-linear-gradient(-45deg,var(--hz) 0 4px,transparent 4px 8px)}
+  .day{font:600 21px/1 var(--f-cond);color:var(--dim);white-space:nowrap}
+  .day b{color:var(--ink)}
+  .tabs{display:flex;background:var(--canvas);border:1px solid var(--line);border-radius:8px;padding:3px}
+  .tab{background:none;border:0;border-radius:6px;padding:5px 14px;cursor:pointer;color:var(--dim);font-weight:600}
+  .tab:hover{color:var(--ink)}
+  .tab.on{background:var(--panel2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--hz)}
+  .tab .ck{color:var(--ok)}
+  .fld{display:flex;align-items:center;gap:7px;color:var(--dim);white-space:nowrap}
+  .fld .num{font-size:18px;width:3ch}
+  .acts{display:flex;gap:8px;align-items:center;margin-left:auto}
+  .menu{position:relative}
+  .menu summary{list-style:none}
+  .menu summary::-webkit-details-marker{display:none}
+  .pop{position:absolute;right:0;top:calc(100% + 6px);width:270px;background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:14px;display:grid;gap:10px;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+  .pop label{display:flex;justify-content:space-between;align-items:center;color:var(--dim)}
+  .pop p{margin:0;font-size:12px;color:var(--faint)}
+
+  /* supplies */
+  .supplies{display:flex;flex-wrap:wrap;gap:8px 30px;padding:9px 20px;border-bottom:1px solid var(--line);color:var(--dim);font-size:14px}
+  .sup{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+  .sup .k{color:var(--ink);font-weight:600}
+  .sup .low{color:var(--b1)}
+  .sup .sum{color:var(--ink);font-weight:600}
+
+  /* layout */
+  .main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;padding:18px 20px 8px;align-items:start}
+  @media (max-width:1400px){.main{grid-template-columns:minmax(0,1fr)}.side{position:static!important}}
+  .bhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin:0 0 10px}
+  .bhead p{margin:0;color:var(--dim);font-size:13.5px}
+  .boardwrap{overflow-x:auto;min-width:0;padding-bottom:4px}
+
+  /* board */
+  .board{border-collapse:separate;border-spacing:4px;table-layout:fixed;width:calc(100% + 8px);min-width:1090px;margin:-4px}
+  .board col.cw{width:236px}
+  .board thead th{vertical-align:bottom;text-align:left;padding:0 3px 4px;font-weight:400}
+  .hd{display:block;background:none;border:0;padding:0;cursor:pointer;font:600 16px/1.05 var(--f-cond);color:var(--ink);text-align:left}
+  .hd:hover{color:var(--hz)}
+  .hm{display:flex;flex-wrap:wrap;gap:2px 7px;margin-top:4px;font-size:11.5px;color:var(--faint)}
+  .sh.off .hd{color:var(--faint);text-decoration:line-through}
+  .pips{display:inline-flex;gap:3px;align-items:center}
+  .pips i{width:7px;height:7px;border-radius:50%;border:1px solid var(--line2)}
+  .pips i.f{background:var(--hz);border-color:var(--hz)}
+  .cd.bad{color:var(--b2)}
+  .pw{color:var(--info)}
+
+  .who{background:var(--panel);border-radius:8px;padding:7px 10px 7px;text-align:left;vertical-align:top;font-weight:400;position:sticky;left:0;z-index:2;box-shadow:-4px 0 0 var(--canvas),4px 0 0 var(--canvas)}
+  .wh{display:flex;align-items:baseline;gap:7px;min-width:0}
+  .nm{background:none;border:0;padding:0;cursor:pointer;font:700 18px/1.1 var(--f-cond);color:var(--ink);text-align:left;white-space:nowrap}
+  .nm:hover{color:var(--hz)}
+  .arch{flex:1;min-width:0;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .np{color:var(--b1)}
+  .bars{display:grid;grid-template-columns:26px 1fr 52px;gap:2px 7px;align-items:center;margin-top:5px;font-size:11px;line-height:12px}
+  .bk{color:var(--faint);font-weight:600}
+  .bar{position:relative;height:7px;border-radius:2px;background:var(--panel2);overflow:hidden}
+  .bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(25% - 2px),var(--panel) calc(25% - 2px) 25%,transparent 25% calc(50% - 2px),var(--panel) calc(50% - 2px) 50%,transparent 50% calc(75% - 2px),var(--panel) calc(75% - 2px) 75%,transparent 75%)}
+  .bar i{position:absolute;top:0;bottom:0;left:0}
+  .bar i.g{background-image:repeating-linear-gradient(-45deg,rgba(0,0,0,.4) 0 2px,transparent 2px 4px)}
+  .bar i.rcv{background:none;box-shadow:inset 0 0 0 1px var(--ok)}
+  .bars.pv .bar{outline:1px solid var(--line2)}
+  .b0{background:var(--ok)} .b1{background:var(--b1)} .b2{background:var(--b2)} .b3,.b4{background:var(--b3)}
+  .t0{color:var(--ok)} .t1{color:var(--b1)} .t2{color:var(--b2)} .t3,.t4{color:var(--b3)}
+  .bv{text-align:right;color:var(--dim);white-space:nowrap}
+  .bv b{font-weight:700}
+  .tr{margin-top:5px;font-size:12px;color:var(--faint);line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:222px}
+  .tr span[title]{cursor:help}
+  .tr .cnd{color:var(--dim)}
+  .tr .hy{color:var(--info)}
+  .who.away .bars,.who.away .tr{opacity:.35}
+  .awayrow{border-radius:8px;color:var(--dim);padding:0 16px!important;vertical-align:middle!important;background:repeating-linear-gradient(-45deg,var(--panel) 0 10px,var(--canvas) 10px 20px)}
+  .awayrow .btn{margin-left:10px}
+
+  .board td{padding:0;height:1px;vertical-align:top}
+  .cell{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:4px;width:100%;height:100%;min-height:90px;padding:7px 8px 6px;border:1px solid transparent;border-radius:7px;cursor:pointer;text-align:left;color:var(--ink);
+    background:linear-gradient(rgb(147 184 107/var(--t,0)),rgb(147 184 107/var(--t,0))),var(--panel)}
+  .cell:hover{border-color:var(--dim)}
+  .cell .o{font:600 22px/1 var(--f-cond)}
+  .cell .o small{display:block;margin-top:2px;font:500 12px/1.2 var(--f-body);color:var(--dim)}
+  .cell .o small:only-child{margin:0;font-size:12.5px}
+  .cell .c{display:flex;flex-wrap:wrap;gap:0 7px;font-size:11.5px;line-height:1.35;color:var(--dim)}
+  .cell .c span{white-space:nowrap}
+  .cell .c b{font-weight:600;color:var(--ink)}
+  .cell .c b.t1{color:var(--b1)} .cell .c b.t2{color:var(--b2)} .cell .c b.t3,.cell .c b.t4{color:var(--b3)}
+  .cell .fl{position:absolute;top:5px;right:7px;font-size:14px;color:var(--b3)}
+  .cell.neg{background:linear-gradient(rgb(224 72 102/.09),rgb(224 72 102/.09)),var(--panel)}
+  .cell.full{opacity:.5}
+  .cell.on{background:var(--hz);color:var(--hz-ink);border-color:var(--hz);opacity:1}
+  .cell.on .o small,.cell.on .c,.cell.on .c b,.cell.on .fl{color:var(--hz-ink)!important}
+  .cell.on .c b[class^=t]{text-decoration:underline;text-underline-offset:2px}
+  .cell.x{cursor:not-allowed;align-items:center;justify-content:center;color:var(--faint);font-size:12px;background:repeating-linear-gradient(-45deg,var(--panel) 0 6px,var(--canvas) 6px 12px)}
+  .cell:disabled{cursor:default}
+  .cell:disabled:hover{border-color:transparent}
+  .board.locked .cell:not(.on){opacity:.3}
+  .board tfoot th{text-align:left;font:600 15px/1.1 var(--f-cond);color:var(--dim);padding:8px 4px 0;vertical-align:top}
+  .board tfoot th small{display:block;margin-top:2px;font:400 11.5px var(--f-body);color:var(--faint)}
+  .board tfoot td{padding-top:6px}
+  .dial{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .dial button{flex:1;background:none;border:0;border-left:1px solid var(--line);padding:4px 0;cursor:pointer;color:var(--faint);font:600 14px/1 var(--f-cond)}
+  .dial button:first-child{border-left:0}
+  .dial button:hover{color:var(--ink)}
+  .dial button.on{background:var(--panel2);color:var(--ink)}
+  .dial button.on.z{color:var(--b2)}
+  .frac{font-size:11px;color:var(--dim);text-align:center;margin-top:2px}
+
+  /* outcome panel */
+  .side{position:sticky;top:76px;display:grid;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .src{margin:3px 0 0;font-size:13px;color:var(--dim)}
+  .src.stale{color:var(--b1)}
+  .pwr{display:grid;gap:7px;margin-top:14px}
+  .pp{display:flex;gap:3px}
+  .pp i{width:16px;height:10px;border-radius:2px;background:var(--panel2);border:1px solid var(--line2)}
+  .pp i.f{background:var(--info);border-color:var(--info)}
+  .pp.short i{border-color:var(--b3)}
+  .pwr p{margin:0;font-size:13px;color:var(--dim)}
+  .pwr p b{color:var(--ink)}
+  .pwr p .bad{color:var(--b3)}
+  .yl{display:grid;grid-template-columns:auto auto 1fr;gap:7px 10px;align-items:baseline;margin-top:14px}
+  .yl .l{color:var(--dim)}
+  .yl .v{font:700 18px/1 var(--f-cond);text-align:right}
+  .yl .x{font-size:12.5px;color:var(--faint)}
+  .yl .x.wn{color:var(--b1)}
+  .pg{grid-column:1/-1;position:relative;height:5px;border-radius:3px;background:var(--panel2);margin:-3px 0 3px;overflow:hidden}
+  .pg i{position:absolute;top:0;bottom:0;left:0;background:var(--faint)}
+  .pg i.add{background:var(--hz)}
+  .none{margin:10px 0 0;color:var(--dim);font-size:14px}
+  .wl{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px;font-size:13.5px}
+  .wl li{position:relative;padding-left:16px;color:var(--dim)}
+  .wl li::before{content:"";position:absolute;left:2px;top:.5em;width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .wl li.w::before{background:var(--b1)}
+  .wl li.d::before{background:var(--b3)}
+  .wl li.d{color:var(--ink)}
+  .wl b{color:var(--ink);font-weight:600}
+  .why{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:1fr auto;gap:3px 12px;font-size:13.5px;color:var(--dim)}
+  .why li{display:contents}
+  .why span:last-child{text-align:right;color:var(--ink)}
+  .why .tot span{border-top:1px solid var(--line);padding-top:4px;font-weight:600;color:var(--ink)}
+  .hint{margin:8px 0 0;font-size:12px;color:var(--faint)}
+
+  /* record */
+  .record{padding:16px 20px 44px}
+  .rechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin:0 0 10px}
+  .rechead p{margin:0;color:var(--dim);font-size:13.5px}
+  .recs{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+  .rec{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--hz);border-radius:8px;padding:10px 12px 12px}
+  .rec h3{margin:0;font-size:18px}
+  .rec h3 span{font:400 14px var(--f-body);color:var(--dim)}
+  .roll{margin:4px 0 0;font-size:13px;color:var(--dim)}
+  .ins{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:10px}
+  .ins label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--faint);font-weight:600}
+  .ins input{width:100%;background:var(--canvas);border:1px solid var(--line);border-radius:5px;padding:5px 4px;text-align:center;font-weight:600;color:var(--faint)}
+  .ins input.rolled{border-color:var(--line2);color:var(--ink)}
+  .ins input:focus{outline:none;border-color:var(--hz)}
+  .ins .ro{padding:6px 0;text-align:center;color:var(--dim);font-weight:600;font-size:14px}
+  .applyrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:14px}
+  .applyrow p{margin:0;color:var(--dim);font-size:13.5px}
+  .done{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .done p{margin:6px 0 0;color:var(--dim);font-size:13.5px}
+
+  /* dialogs */
+  .modal{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;background:rgba(8,10,8,.66);overflow:auto}
+  .modal.open{display:flex}
+  .box{width:min(780px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:20px 22px 22px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .box > header,.dr > header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .lede{color:var(--dim);margin:4px 0 0}
+  .form{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;margin-top:16px}
+  .form .fl,.form .chk{display:flex;align-items:center;gap:8px;color:var(--dim)}
+  .form .dial{width:128px}
+  .rules{color:var(--dim);font-size:14px;max-width:72ch;margin:0}
+  .cmp{width:100%;border-collapse:collapse;font-size:13.5px}
+  .cmp th{text-align:left;color:var(--faint);font-weight:600;font-size:12px;padding:4px 8px;border-bottom:1px solid var(--line)}
+  .cmp td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .cmp td.nt{color:var(--b1);font-size:12.5px}
+  .cmp tr.on td:first-child{box-shadow:inset 3px 0 0 var(--hz)}
+  .gt{border-collapse:collapse;font-size:13px;margin-top:12px}
+  .gt th,.gt td{border:1px solid var(--line);padding:4px 8px;text-align:center}
+  .gt th{color:var(--dim);font-weight:600}
+  .gt td.l,.gt th.l{text-align:left}
+  .gt small{display:block;color:var(--faint);font-size:11px}
+  .box h2 + .rowline{margin-top:8px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .grid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--dim)}
+  .grid input{width:100%;background:var(--canvas);border:1px solid var(--line);border-radius:5px;padding:5px;color:var(--ink)}
+  .rowline{display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap;color:var(--dim)}
+  .box h2[style]{font-size:17px}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);background:var(--ink);color:var(--canvas);padding:9px 16px;border-radius:8px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:60;max-width:calc(100vw - 32px)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:700px){.top,.supplies{padding-left:16px;padding-right:16px}.main,.record{padding-left:16px;padding-right:16px}.acts{margin-left:0;flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="mark">Orange Zone</div>
+  <div class="day">Day <b id="day">–</b></div>
+  <div class="tabs" id="tabs" role="tablist" aria-label="Work phase"></div>
+  <label class="fld">Weather <select id="weather"></select></label>
+  <label class="fld">Power <input type="number" id="power" step="0.5" class="num"><span id="pmax"></span></label>
+  <div class="acts">
+    <button class="btn primary" id="auto">Suggest plan</button>
+    <button class="btn" id="clear">Clear</button>
+    <button class="btn" id="copy">Copy plan</button>
+    <button class="btn" id="newday">New day</button>
+    <details class="menu"><summary class="btn">Settings</summary>
+      <div class="pop">
+        <label>Worker cap <input type="number" id="cap" class="num"></label>
+        <label>Accident on d100 ≤ <input type="number" id="acc" class="num"></label>
+        <label>Lucky on d100 ≥ <input type="number" id="luck" class="num"></label>
+        <button class="btn" id="gradesBtn">Grade sheet</button>
+        <button class="btn danger" id="reset">Reset to sheet</button>
+        <p>Reset throws away everything entered here and reloads the last sheet sync.</p>
+      </div></details>
+  </div>
+</header>
+<div class="supplies" id="supplies"></div>
+<main class="main">
+  <section>
+    <div class="bhead"><h2>Who works where</h2><p>Click a cell to put that survivor on that job, and click it again to take them off. Greener cells are better picks. Hover to preview their statuses.</p></div>
+    <div class="boardwrap"><table class="board" id="board"></table></div>
+  </section>
+  <aside class="side" id="side"></aside>
+</main>
+<section class="record" id="record"></section>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script src="state.js"></script>
+<script>
+"use strict";
+/* ================= rules constants ================= */
+const F=s=>Math.floor(s/10), T=s=>Math.floor(s/20);
+const HYDRA={FULL:0,LIGHT:5,MODERATE:10,SEVERE:20};   // roll modifier magnitude
+const WEATHERS=["Sunny","Rainy","Chill Fog","Blizzard","Plague Wind","Humid","Scorcher"];
+const WEATHER_W={ // per-worker status penalties + per-phase resource bonuses
+ "Rainy":{stress:5,raw:1.5,eqDmg:5},"Blizzard":{rand:10,raw:3,eqDmg:8},"Plague Wind":{plague:5},
+ "Humid":{fatigue:8},"Scorcher":{fatigue:10}};
+const DOMAINS={Physical:["STR","DEX","CON","AGI"],Survival:["CRF","FLD","STL","SCAV"],
+ Mental:["INT","WILL","CHA","PER"],Science:["PHYS","BIO","MED","COMP"]};
+const STATUS_DOMAIN={injury:"Physical",plague:"Survival",stress:"Mental",hunger:"Science"};
+
+/* ================= Auto-suggest value model (tune here; mirrored in README) =================
+   plan value = Σ prioMult(prio)·station value − Σ worker strain + rest + Ida bonus + power reserve
+   1 point ≈ one good shift. Power itself is never a benefit: it's a legality check (+ reserve). */
+const VAL={
+  hungerPerNight:20,                 // per survivor (Turn Order: "usually 20"); fruit = 5 hunger
+  foodUrgency:[[1.5,1.5],[3,1],[Infinity,.6]],   // [nights of food left < n, × fruit value]
+  wood:1/20, metal:1/12,             // per unit
+  rawWater:1/5,                      // per unit, only up to free tank space
+  progress:1/40,                     // Lab/Forge per point, capped at remaining need; Forge 0 with no queue
+  finishBonus:.75,                   // this phase completes the Lab or active Forge item
+  reveal:1/60,                       // SIGINT per point (excess carries over, so never capped)
+  cancel:1,                          // a Plague Card Cancel × combined chance
+  powerReserve:.15,                  // each power left (in P1, or in P2 when bike prio > 1) × prioMult(bike prio)
+  bored:.4,                          // Ida uses a MENT/SCI station, unless she already did in Phase 1
+  accStationDmg:.6,                  // station condition loss cost per accident (10–15 dmg ≈ 12–21 wood/metal)
+  prioMult:[0,1,2.5,6],              // dial 0=off, 1=×1, 2=×2.5, 3=×6 (interpolated for fractional dials)
+  perPoint:{fatigue:.01,hunger:.01,injury:.03,stress:.015,plague:.02},   // strain per status point gained
+  band:[0,.25,.5,1,100],             // strain of sitting in band <25 · 25–49 · 50–75 · >75 · 100+ (death)
+};
+function prioM(p){if(p<=0)return 0;const a=VAL.prioMult,i=Math.min(a.length-2,Math.floor(p));
+  return i===p?a[i]:a[i]+(p-i)*(a[i+1]-a[i])}
+
+/* exact EV of max(0, 1d(sides)+flat) */
+function evD(sides,flat){let t=0;for(let f=1;f<=sides;f++)t+=Math.max(0,f+flat);return t/sides}
+const d10=f=>evD(10,f), d6=f=>evD(6,f);
+function penalty(s){return s>75?.4:s>=50?.2:s>=25?.1:0}   // sheet: ">75 = 40%"
+function condSteps(ss){return ss.cond==null?0:Math.floor((100-ss.cond)/20)}
+function condOut(sid,ss){const stn=typeof sid==="string"?st(sid):sid;return (stn.condOut||0)*condSteps(ss)}
+function fmtFlat(die,flat){return die?`1${die}${flat>=0?"+":""}${flat}`:`${flat>=0?"+":""}${flat}`}
+function hydraMod(c){return HYDRA[String(c.hydration||"FULL").trim().toUpperCase().split(/\s+/)[0]]??0}
+
+/* ================= station definitions =================
+   cost() -> [status, die|null, flat] entries (die used for EV + roll formula)
+   out()  -> {resource: amount}                                              */
+const STATIONS=[
+ {id:"shelter",name:"The Shelter",slots:99,rest:true,ida:false,emp:false,
+  out:c=>({fatigue:-13.5}),
+  note:"Rest: restore 1d6+10 fatigue. Unlimited.",
+  rules:"Restore 1d6 + 10 fatigue. (Claustrophobic: +6 stress when resting during a work phase.)"},
+ {id:"bike",name:"Generator Bike",slots:1,accInj:7,condF:5,ida:false,emp:true,
+  out:c=>({power:2}),
+  cost:c=>[["fatigue","d10",15-F(e(c,"AGI"))],["hunger","d6",5-F(e(c,"AGI"))],
+           ...(e(c,"AGI")<30?[["injury",null,2]]:[])],
+  note:"+2 power",
+  rules:"Generate 2 power. Fatigue 1d10+15 −1/10 AGI. Hunger 1d6+5 −1/10 AGI. +2 injury if AGI<30. Cond: +5 fatigue per 20% loss. Accident: station 15 dmg, worker +7 injury. Lucky: random (+100 XP, −5 fatigue cost, or positive condition)."},
+ {id:"water",name:"Water Tanks",slots:1,accInj:7,accRandSta:true,condF:5,ida:false,emp:true,
+  powerOpt:{cost:1,label:"+1 power → 5 raw (vs 3.5)"},
+  out:(c,o)=>({rawWater:o.powerOpt?5:3.5}),
+  cost:c=>[["fatigue","d10",12-T(e(c,"STR"))-T(e(c,"CON"))],["hunger","d6",3-T(e(c,"STR"))-T(e(c,"CON"))],
+           ...(e(c,"STR")+e(c,"CON")<60?[["injury",null,2]]:[])],
+  note:"+3.5 raw water (or 5 for 1 power)",
+  rules:"Generate 3.5 raw water, or spend 1 power for 5. Fatigue 1d10+12 −1/20 STR −1/20 CON. Hunger 1d6+3 same. +2 injury if STR+CON<60. Cond: +5 fatigue per 20% loss. Accident: lose 1.5 raw water or 15 station dmg, AND worker +7 stress or injury (random). Lucky: random (+100 XP, −5 fatigue, or positive condition). Anytime: 1 power + 4 raw → 3 clean; 2 fruit → 0.5 clean."},
+ {id:"forge",name:"The Forge",slots:1,power:1,accInj:7,accSta:"stress",condF:5,ida:false,emp:true,
+  out:c=>({pForge:0.5*e(c,"CRF")}),
+  cost:c=>[["fatigue","d10",12]],
+  note:"+½·CRF progress, −1 power",
+  rules:"Costs 1 power. Generate 1/2 CRF progress toward active project (excess spills to next queued or wasted). Fatigue 1d10+12. Accident: 10 station dmg +7 stress. Lucky: +10 progress, OR random (+100 XP, −5 fatigue, or positive condition)."},
+ {id:"workshop",name:"The Workshop",slots:2,power:1,accInj:7,accSta:"stress",condF:5,condLuck:5,ida:true,emp:true,
+  out:c=>({pWork:(e(c,"CRF")+e(c,"COMP"))/2}),
+  cost:c=>[["fatigue","d10",10]],
+  note:"+mean(CRF,COM) progress, −1 power",
+  rules:"Costs 1 power. Stores up to 50 progress. Generate mean(CRF, COMP) progress. Fatigue 1d10+10. Cond: +5 fatigue and −5 luck roll per 20% loss. Accident: 10 station dmg +7 stress. Lucky: +10 progress, OR random (+100 XP, −5 fatigue, or positive condition)."},
+ {id:"sigint",name:"SIGINT",slots:1,power:1,accInj:7,condF:5,condLuck:5,prog:true,ida:true,emp:true,
+  out:c=>({pSIG:8+e(c,"SCAV")}),
+  cost:c=>[["fatigue","d10",15-F(e(c,"COMP"))],["hunger","d6",5-F(e(c,"COMP"))]],
+  note:"+1d15+SCAV mission reveal, −1 power",
+  rules:"Costs 1 power. 1d15 + SCAV mission reveal progress (excess carries over; each scan adds +5 to next need). Fatigue 1d10+15 −1/10 COMP. Hunger 1d6+5 −1/10 COMP. Cond: +5 fatigue and −5 luck roll per 20% loss. Accident: 15 station dmg +7 injury. Lucky: +15 progress, OR random (+100 XP, −5 fatigue, or positive condition)."},
+ {id:"hydro",name:"Hydroponics",slots:1,accInj:7,condF:5,condOut:-2,abund:1,ida:true,emp:false,
+  out:(c,o,ss)=>{const best=Math.max(e(c,"SCAV")/3,e(c,"BIO")/2);
+    return {fruit:Math.max(0,Math.floor(best*(ss.abundance/100)+condOut("hydro",ss)))}},
+  cost:c=>[["fatigue","d10",16-F(e(c,"WILL"))],["hunger","d6",-1]],
+  note:"+fruit (⅓·SCAV or ½·BIO × abundance)",
+  rules:"Generate ⌊max(1/3 SCAV, 1/2 BIO) × abundance%⌋ fruit (5 hunger each). Fatigue 1d10+16 −1/10 WILL. Hunger 1d6−1. Cond: +5 fatigue and −2 fruit per 20% loss. Abundance +25/phase after 1 full unused day. Accident: 15 station dmg +7 injury. Lucky: +3 fruit, OR random (+100 XP, −5 fatigue, or positive condition)."},
+ {id:"logging",name:"Logging",slots:2,accInj:7,condF:5,condOut:-2,ida:false,emp:true,
+  out:(c,o,ss)=>({wood:Math.max(0,Math.floor(e(c,"CON")/5)+condOut("logging",ss))}),
+  cost:c=>[["fatigue","d10",12-F(e(c,"AGI"))]],
+  note:"+⌊CON/5⌋ wood",
+  rules:"Generate ⌊1/5 CON⌋ wood. Fatigue 1d10+12 −1/10 AGI. Cond: +5 fatigue and −2 wood per 20% loss. Accident: 15 station dmg +7 injury. Lucky: +2 wood, OR random (+100 XP, −5 fatigue, or positive condition)."},
+ {id:"iron",name:"Iron Processing",slots:2,accInj:7,condF:5,condOut:-2,ida:false,emp:true,
+  out:(c,o,ss)=>({metal:Math.max(0,Math.floor(e(c,"STR")/6)+condOut("iron",ss))}),
+  cost:c=>[["fatigue","d10",12-F(e(c,"DEX"))]],
+  note:"+⌊STR/6⌋ metal",
+  rules:"Generate ⌊1/6 STR⌋ metal. Fatigue 1d10+12 −1/10 DEX. Cond: +5 fatigue and −2 metal per 20% loss. Accident: 15 station dmg +7 injury. Lucky: +2 metal, OR random (+100 XP, −5 fatigue, or positive condition)."},
+ {id:"lookout",name:"Lookout Station",slots:2,accInj:10,condF:5,condOut:-1,ida:true,emp:true,
+  out:(c,o,ss)=>({cancel:Math.max(0,e(c,"PER")+condOut("lookout",ss))}),
+  cost:c=>[["fatigue","d10",12-F(e(c,"FLD"))]],
+  note:"+PER% plague-card-cancel chance",
+  rules:"Generate PER% chance to gain a Plague Card Cancel. Fatigue 1d10+12 −1/10 FLD. Cond: +5 fatigue and −1% cancel chance per 20% loss. Accident: 15 station dmg +10 injury. Lucky: +5% cancel chance, OR random (+100 XP, −5 fatigue, or positive condition)."},
+];
+const st=id=>STATIONS.find(s=>s.id===id);
+const sname=stn=>stn.name.replace(/^The /,"").split(" ")[0];
+const cname=c=>c.name.replace(/^Dr\.\s*/i,"").split(" ")[0];
+const RES_KEYS=["fruit","wood","metal","rawWater"];   // Look There boosts resources only, not progress (ruling)
+const OUT_LBL={pForge:"Forge prog",pWork:"Lab prog",pSIG:"SIGINT",fruit:"Fruit",wood:"Wood",metal:"Metal",rawWater:"Raw H₂O",fatigue:"Rest",power:"Power",cancel:"Cancel %"};
+
+/* ================= effective skill =================
+   Use base skill (max, from Plague Data) so characters who already have a status penalty
+   in the spreadsheet (cur/max) are not penalized twice, and CIGS (ignorePen) restores full base skill. */
+function e(c,skill){
+  const s=c.skills[skill].max??c.skills[skill].cur;
+  if(c.ignorePen)return s;
+  let mult=1-penalty(c.statuses.fatigue);
+  for(const[stt,dom]of Object.entries(STATUS_DOMAIN))
+    if(DOMAINS[dom].includes(skill))mult*=1-penalty(c.statuses[stt]);
+  return s*mult;
+}
+const hasTrait=(c,re)=>c.traits.some(t=>re.test(t.name)||re.test(t.text));
+
+/* ================= state ================= */
+let S;
+function freshState(prev){
+  const b=JSON.parse(JSON.stringify(SHEET_STATE));
+  b.plans={p1:{},p2:{}};b.away=[];b.cmp=prev?.cmp||{};b.gradesOpen=prev?.gradesOpen??false;
+  b.cap=prev?.cap??5;b.acc=prev?.acc??10;b.luck=prev?.luck??90;
+  b.stationState={};
+  for(const stn of STATIONS){
+    const syn=(b.stations||{})[stn.id]||{},old=prev?.stationState?.[stn.id]||{};
+    b.stationState[stn.id]={cond:syn.cond??stn.cond??100,abundance:syn.abundance??80,
+      powerOpt:old.powerOpt??false,prio:old.prio??1,on:old.on??true,
+      queue:syn.queue||"",banked:syn.banked||0,need:syn.need||100,progress:syn.progress||0};
+  }
+  const inv=b.inventory||{};
+  const parse2=k=>{const m=/([\d.]+)\s*\((\d+)\)/.exec(String(inv[k]||""));return m?[+m[1],+m[2]]:[num(inv[k]),0]};
+  const [raw,rawCap]=parse2("Raw"),[clean,cleanCap]=parse2("Clean"),[pur,purCap]=parse2("Purified");
+  const perish=num(inv["20 hunger perishables"])*20+num(inv["15 hunger perishables"])*15+num(inv["10 hunger perishables"])*10;
+  b.stock={fruit:num(inv["5 hunger fruit"]),mre:num(inv.MREs),perish,
+    wood:num(inv.Wood),metal:num(inv.Metal),raw,rawCap,clean,cleanCap,pur,purCap};
+  b.day=b.day??1;b.sheetDay=SHEET_STATE.day;b.hash=SHEET_STATE.hash||"";
+  b.phase="p1";b.applied={};b.appliedLog={};
+  return b;
+}
+function num(v){const n=parseFloat(v);return isNaN(n)?0:n}
+const LS_KEY="oz_v2";
+function save(){localStorage.setItem(LS_KEY,JSON.stringify(S))}
+function load(){
+  let j=null;
+  try{j=JSON.parse(localStorage.getItem(LS_KEY));
+    const sameSheet=j&&(j.sheetDay??j.day)===SHEET_STATE.day&&j.source===SHEET_STATE.source
+      &&(!SHEET_STATE.hash||!j.hash||j.hash===SHEET_STATE.hash);
+    if(sameSheet&&j.plans&&j.stock&&j.stationState){
+      j.sheetDay=SHEET_STATE.day;j.hash=SHEET_STATE.hash||"";
+      j.phase=j.phase||"p1";j.applied=j.applied||{};j.appliedLog=j.appliedLog||{};
+      j.stock.perish=j.stock.perish??0;
+      j.stock.wood=j.stock.wood??num(SHEET_STATE.inventory?.Wood);
+      j.stock.metal=j.stock.metal??num(SHEET_STATE.inventory?.Metal);
+      return j;
+    }
+  }catch(e){}
+  return freshState(j);           // new sheet export -> fresh state while keeping station settings
+}
+
+/* ================= cost / output ================= */
+const curA=()=>S.plans[S.phase];
+function opts(x){return S.stationState[x.id??x]}
+function calcOut(ci,stn,o){return stn.out(S.characters[ci],o??opts(stn),opts(stn))}
+function calcCost(ci,stn,co){         // co = co-workers array context (default: current plan incl. ci)
+  const c=S.characters[ci],ss=opts(stn);
+  if(co===undefined)co=curA()[stn.id]||[];
+  const out={_f:{},_max:{},_notes:[]};
+  for(const[stat,die,flat]of(stn.cost?stn.cost(c):[])){
+    const sides=die?+die.slice(1):0;
+    out[stat]=(out[stat]||0)+(sides?evD(sides,flat):flat);
+    out._max[stat]=(out._max[stat]||0)+(sides?Math.max(0,sides+flat):flat);
+    out._f[stat]=(out._f[stat]?out._f[stat]+" + ":"")+fmtFlat(die,flat);
+  }
+  const steps=condSteps(ss);
+  if(stn.condF&&steps){const cf=stn.condF*steps;
+    out.fatigue=(out.fatigue||0)+cf;out._max.fatigue=(out._max.fatigue||0)+cf;
+    out._f.fatigue=(out._f.fatigue||"0")+` +${cf}cond`}
+  // Weather "Any worker" penalties apply to working stations, not resting in the Shelter
+  if(!stn.rest){
+    const w=WEATHER_W[wx()]||{};
+    for(const k in w){
+      if(k==="rand"){out._rand=(out._rand||0)+w.rand;out._notes.push(`+${w.rand} to two random statuses`)}
+      else if(k!=="raw"&&k!=="eqDmg"){
+        out[k]=(out[k]||0)+w[k];out._max[k]=(out._max[k]||0)+w[k];
+        out._f[k]=(out._f[k]?out._f[k]+" ":"")+`+${w[k]}wx`}
+    }
+  }
+  const others=co.filter(x=>x!==ci).length;
+  if(!stn.rest&&hasTrait(c,/LONER/i)&&others>0){
+    for(const k of STATUSES){if(out[k])out[k]*=1.2;if(out._max[k])out._max[k]*=1.2}
+    if(out._rand)out._rand*=1.2;
+    out._loner=true;out._notes.push("LONER +20% (sharing)");
+  }
+  if(!stn.rest){
+    const cLuck=(stn.condLuck||0)*steps;
+    let accP=((S.acc??10)+hydraMod(c)+cLuck)/100;
+    if(hasTrait(c,/Overconfident/i)&&others===0){accP+=0.15;out._notes.push("Overconfident +15% (alone)")}
+    accP=Math.max(0,Math.min(1,accP));
+    out._acc=accP;
+    if(stn.accInj){const dmg=accP*stn.accInj*(out._loner?1.2:1),key=stn.accRandSta?"inj/sts":(stn.accSta||"injury");
+      out._accDmg=dmg;out._notes.push(`accident ${(accP*100).toFixed(0)}% → ~${dmg.toFixed(1)} ${key}`)}
+    const luckP=Math.max(0,Math.min(1,(100-((S.luck??90)+hydraMod(c)+cLuck)+1)/100));
+    out._luck=luckP;
+  }
+  if(stn.rest&&hasTrait(c,/CLAUSTROPHOBIC/i)){
+    out.stress=(out.stress||0)+6;out._max.stress=(out._max.stress||0)+6;
+    out._f.stress=(out._f.stress?out._f.stress+" ":"")+"+6";out._notes.push("Claustrophobic +6 stress")}
+  if(stn.rest){const over=Math.max(0,13.5-c.statuses.fatigue);if(over>0)out._notes.push(`${over.toFixed(1)} rest wasted (fatigue ${c.statuses.fatigue})`)}
+  return out;
+}
+function totalCost(cs){
+  return (cs.fatigue||0)+(cs.hunger||0)*1.2+(cs.injury||0)*2+(cs.stress||0)*1+(cs.plague||0)*1.5+(cs._rand||0)+(cs._accDmg||0)*2;
+}
+/* threshold & death warnings when projected statuses, max die rolls, or accidents cross bands */
+function projWarn(ci,cost,stn){
+  const c=S.characters[ci],w=[],rest=stn?.rest?calcOut(ci,stn).fatigue:0;
+  const randEV=(cost._rand||0)/STATUSES.length,mult=cost._loner?1.2:1;
+  for(const k of["fatigue","injury","stress","hunger","plague"]){
+    const cur=c.statuses[k],r=k==="fatigue"?rest:0;
+    const p=Math.max(0,cur+(cost[k]||0)+r+randEV);
+    const maxRoll=Math.max(0,cur+(cost._max?.[k]??cost[k]??0)+r+(cost._rand?5*mult:0));
+    const accHit=stn&&!stn.rest&&stn.accInj&&(stn.accRandSta?(k==="injury"||k==="stress"):k===(stn.accSta||"injury"))?stn.accInj*mult:0;
+    if(p>=100)w.push(`<span class="dth">${k}→100+ DEATH RISK</span>`);
+    else if(maxRoll>=100)w.push(`<span class="dth">${k} max roll ${Math.round(maxRoll)}→DEATH RISK</span>`);
+    else if(accHit&&cur+(cost[k]||0)+accHit>=100)w.push(`<span class="dth">${k} +acc→${Math.round(cur+(cost[k]||0)+accHit)} DEATH RISK</span>`);
+    else{for(const[th,pen]of[[76,"−40%"],[50,"−20%"],[25,"−10%"]])
+      if(cur<th&&p>=th){w.push(`${k} ${cur}→~${Math.round(p)} ⚠${pen}`);break}}
+  }return w;
+}
+/* pairing bonuses evaluated on a whole assignment */
+function pairMult(stn,workers){ // Philippe's Look There: +25% resources for him & partners
+  return workers.length>1&&workers.some(i=>hasTrait(S.characters[i],/Look There/i))?1.25:1;
+}
+function isBoredDone(){
+  return S.phase==="p2"&&Object.entries(S.plans.p1||{}).some(([sid,a])=>st(sid)?.ida&&a.some(ci=>hasTrait(S.characters[ci],/EASILY BORED/i)));
+}
+function usesPhysSurv(c,stn){
+  return stn.id==="hydro"?e(c,"SCAV")/3>=e(c,"BIO")/2:!!stn.emp;
+}
+function stationNotes(stn,workers){
+  const n=[],ss=opts(stn),w=WEATHER_W[wx()]||{};
+  if(pairMult(stn,workers)>1&&Object.keys(refOut(stn)).some(k=>RES_KEYS.includes(k)))n.push("Look There: +25% resources");
+  if(w.eqDmg&&workers.length&&(stn.id==="bike"||stn.power||(stn.powerOpt&&ss.powerOpt)))
+    n.push(`${wx()}: station takes ${w.eqDmg} cond dmg (powered)`);
+  workers.forEach(i=>{const c=S.characters[i],nm=cname(c);
+    if(hasTrait(c,/FIELD TECH/i)&&ss.cond<80)n.push(`${nm} FIELD TECH: +20 cond instead of erosion`);
+    if(hasTrait(c,/EASILY BORED/i))n.push(stn.ida?`${nm} uses MENT/SCI ✓`:isBoredDone()?`${nm} MENT/SCI done in P1 ✓`:`${nm}: no MENT/SCI here — needs one today`);
+    if(hasTrait(c,/EMPIRICIST/i)&&usesPhysSurv(c,stn))n.push(`${nm} EMPIRICIST: +10 knowledge`);});
+  return n;
+}
+
+/* ================= Auto-suggest scoring ================= */
+const band=s=>s>=100?4:s>75?3:s>=50?2:s>=25?1:0;
+function distOf(entries){            // exact distribution of a sum of [die|null, flat] terms, each roll floored at 0
+  let d=[[0,1]];
+  for(const[die,flat]of entries){const n=die?+die.slice(1):0;
+    const faces=n?[...Array(n)].map((_,f)=>[Math.max(0,f+1+flat),1/n]):[[flat,1]];
+    d=d.flatMap(([a,p])=>faces.map(([b,q])=>[a+b,p*q]))}
+  return d;
+}
+/* expected strain of one shift from the real dice + accident odds: per-point weights + status-band crossings + station dmg.
+   work = cost of status gains (LONER scales gains only); rest = value of Shelter fatigue recovery */
+function strainOf(ci,stn,shared){
+  const c=S.characters[ci],ss=opts(stn),by={},add={},steps=condSteps(ss);
+  for(const[k,die,flat]of(stn.cost?stn.cost(c):[]))(by[k]=by[k]||[]).push([die,flat]);
+  if(stn.condF&&steps)add.fatigue=stn.condF*steps;
+  if(!stn.rest){
+    const w=WEATHER_W[wx()]||{};
+    for(const k in w){if(k==="rand")STATUSES.forEach(s=>add[s]=(add[s]||0)+w.rand/STATUSES.length);
+      else if(k!=="raw"&&k!=="eqDmg")add[k]=(add[k]||0)+w[k]}
+  }
+  if(stn.rest&&hasTrait(c,/CLAUSTROPHOBIC/i))add.stress=(add.stress||0)+6;
+  const mult=!stn.rest&&shared&&hasTrait(c,/LONER/i)?1.2:1,accK=stn.accSta||"injury";
+  const cLuck=(stn.condLuck||0)*steps;
+  const accP=stn.rest||!stn.accInj?0:Math.max(0,Math.min(1,((S.acc??10)+hydraMod(c)+cLuck)/100+(hasTrait(c,/Overconfident/i)&&!shared?.15:0)));
+  let work=accP*(VAL.accStationDmg||0),rest=0;
+  for(const k of STATUSES){const cur=c.statuses[k],sc=v=>VAL.perPoint[k]*v+VAL.band[band(cur+v)]-VAL.band[band(cur)];
+    let d=distOf(by[k]||[]).map(([v,p])=>[(v+(add[k]||0))*mult,p]);
+    if(accP){
+      if(stn.accRandSta&&(k==="injury"||k==="stress"))d=d.flatMap(([v,p])=>[[v,p*(1-accP/2)],[v+stn.accInj*mult,p*(accP/2)]]);
+      else if(!stn.accRandSta&&k===accK)d=d.flatMap(([v,p])=>[[v,p*(1-accP)],[v+stn.accInj*mult,p*accP]]);
+    }
+    for(const[v,p]of d)work+=p*sc(v);
+    if(stn.rest&&k==="fatigue")for(let f=1;f<=6;f++)rest-=sc(-Math.min(cur,f+10))/6;
+  }
+  return {work,rest};
+}
+function needsCtx(){
+  const s=S.stock,need=S.characters.length*VAL.hungerPerNight,nights=(s.fruit*5+s.mre*20+(s.perish||0))/need;
+  const ws=opts("workshop"),fg=opts("forge"),fq=fg.queue,wRaw=(WEATHER_W[wx()]||{}).raw||0;
+  return {fruit:5/need*VAL.foodUrgency.find(([n])=>nights<n)[1],
+    tank:s.rawCap?Math.max(0,s.rawCap-s.raw-wRaw):Infinity,
+    lab:Math.max(0,ws.need-ws.banked),
+    forge:!!fq&&fq!=="None"?Math.max(0,(fg.need||100)-(fg.banked||0)):0};
+}
+/* value of a station's combined output for a set of workers (before prio multiplier) */
+function stationValue(stn,workers,N,oOverride){
+  const pm=pairMult(stn,workers),sum={},miss=[];
+  for(const ci of workers){const o=calcOut(ci,stn,oOverride);
+    for(const k in o){if(k==="cancel")miss.push(1-Math.min(100,o[k])/100);else sum[k]=(sum[k]||0)+o[k]*(RES_KEYS.includes(k)?pm:1)}}
+  let v=(sum.fruit||0)*N.fruit+(sum.wood||0)*VAL.wood+(sum.metal||0)*VAL.metal+Math.min(sum.rawWater||0,N.tank)*VAL.rawWater
+    +(sum.pSIG||0)*VAL.reveal;
+  if(sum.pForge&&N.forge>0)v+=Math.min(sum.pForge,N.forge)*VAL.progress+(sum.pForge>=N.forge?VAL.finishBonus:0);
+  if(sum.pWork)v+=Math.min(sum.pWork,N.lab)*VAL.progress+(N.lab>0&&sum.pWork>=N.lab?VAL.finishBonus:0);
+  if(miss.length)v+=(1-miss.reduce((a,b)=>a*b,1))*VAL.cancel;
+  return v;
+}
+
+/* reference output at skill-100 for absolute grade scale */
+const REFC={statuses:{injury:0,plague:0,stress:0,hunger:0,fatigue:0},hydration:"FULL",ignorePen:true,traits:[],
+  skills:Object.fromEntries(Object.values(DOMAINS).flat().map(k=>[k,{cur:100,max:100}]))};
+function refOut(stn){return stn.out(REFC,{powerOpt:false},{cond:100,abundance:100})}
+const CONST_OUT=new Set(["bike","water"]);
+
+/* ================= grades ================= */
+function grade(r){const B=[[.9,"A+"],[.8,"A"],[.7,"A-"],[.6,"B+"],[.5,"B"],[.4,"B-"],[.3,"C+"],[.25,"C"],[.2,"C-"],[.15,"D+"],[.1,"D"],[.05,"D-"]];
+  for(const[t,l]of B)if(r>=t)return l;return "F"}
+function costGrade(t){const B=[[8,"A+"],[10,"A"],[11,"A-"],[12,"B+"],[13,"B"],[14,"B-"],[15,"C+"],[16,"C"],[17,"C-"],[18,"D+"],[19,"D"],[20,"D-"]];
+  for(const[x,l]of B)if(t<x)return l;return "F"}
+
+/* ================= view helpers ================= */
+const $=id=>document.getElementById(id);
+const wx=()=>S.weather;
+const STATUSES=["injury","plague","stress","hunger","fatigue"];
+const SABBR={injury:"INJ",plague:"PLA",stress:"STS",hunger:"HUN",fatigue:"FTG"};
+const SNAME={injury:"injury",plague:"plague",stress:"stress",hunger:"hunger",fatigue:"fatigue"};
+const PHASE_N={p1:1,p2:2};
+const OUT_UNIT={fruit:"fruit",wood:"wood",metal:"metal",rawWater:"raw water",pWork:"Lab",pForge:"Forge",pSIG:"SIGINT",power:"power"};
+const esc=s=>String(s??"").replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+const strip=s=>String(s).replace(/<[^>]+>/g,"");
+const fx=(v,d=1)=>+(+v).toFixed(d);
+const bandN=v=>v>=100?4:v>75?3:v>=50?2:v>=25?1:0;
+const nice=s=>{s=String(s).trim();return s===s.toUpperCase()?s.charAt(0)+s.slice(1).toLowerCase():s};
+const warnText=w=>strip(w).replace(/ ⚠(−\d+%)/,", skills $1");
+let hoverCi=-1,hoverKey="";
+
+function workersIn(A){return Object.entries(A).reduce((n,[id,a])=>n+(st(id).rest?0:a.length),0)}
+function stationOf(A,ci){return Object.keys(A).find(id=>A[id].includes(ci))}
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("show"),2800)}
+function twoStep(btn,ask,fn){
+  if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.label;return fn()}
+  btn.dataset.label=btn.textContent;btn.dataset.armed="1";btn.textContent=ask;
+  setTimeout(()=>{if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.label}},3500);
+}
+/* everything Auto's score depends on; if it changes after a suggestion, the breakdown is stale */
+const ctxSig=()=>JSON.stringify([S.weather,S.power.current,S.cap,S.acc,S.luck,S.stock,S.stationState,S.away,
+  S.characters.map(c=>[c.statuses,c.hydration,c.ignorePen,c.skills])]);
+
+/* ================= one survivor at one job ================= */
+/* what-if for survivor i at stn: co-workers included (Look There, LONER), full stations shown solo */
+function cellInfo(i,stn,A,N){
+  const cur=A[stn.id]||[],here=cur.includes(i),others=cur.filter(x=>x!==i);
+  const full=!here&&!stn.rest&&others.length>=stn.slots,ws=full?[i]:[...others,i];
+  const o=calcOut(i,stn),pm=pairMult(stn,ws),cs=calcCost(i,stn,ws);
+  let net;
+  if(stn.rest){const r=strainOf(i,stn,false);net=prioM(opts(stn).prio)*r.rest-r.work}
+  else{const without=ws.filter(x=>x!==i);
+    net=prioM(opts(stn).prio)*(stationValue(stn,ws,N)-stationValue(stn,without,N))-strainOf(i,stn,ws.length>1).work
+      +(stn.ida&&!isBoredDone()&&hasTrait(S.characters[i],/EASILY BORED/i)?VAL.bored:0)}
+  return {here,full,ws,o,pm,cs,net,warn:projWarn(i,cs,stn)};
+}
+function deltas(i,stn,cs){
+  const d={},r=(cs._rand||0)/STATUSES.length;
+  for(const k of STATUSES)d[k]=(cs[k]||0)+r;
+  if(stn.rest)d.fatigue+=calcOut(i,stn).fatigue;
+  return d;
+}
+function barsHtml(i,d){
+  const c=S.characters[i];
+  return STATUSES.map(k=>{
+    const v=c.statuses[k],p=Math.max(0,v+(d?.[k]||0)),lo=Math.min(100,v,p),hi=Math.min(100,Math.max(v,p));
+    const moved=Math.round(p)!==Math.round(v);
+    return `<span class="bk">${SABBR[k]}</span><span class="bar"><i class="b${bandN(v)}" style="width:${lo}%"></i>${moved?
+      `<i class="${p>v?`g b${bandN(p)}`:"rcv"}" style="left:${lo}%;width:${hi-lo}%"></i>`:""}</span>`
+      +`<span class="bv">${Math.round(v)}${moved?` <b class="t${bandN(p)}">→${Math.round(p)}</b>`:""}</span>`}).join("");
+}
+function outText(k,v,N){
+  if(k==="cancel")return `${Math.round(v)}%<small>cancel chance</small>`;
+  if(k==="pWork"&&N.lab<=0)return `<small>Lab is finished</small>`;
+  if(k==="pWork"&&v>=N.lab)return `+${fx(N.lab)}<small>Lab, finishes</small>`;
+  if(k==="pForge"&&N.forge<=0)return `<small>no Forge project</small>`;
+  if(k==="pForge"&&v>=N.forge)return `+${fx(N.forge)}<small>Forge, finishes</small>`;
+  return `+${fx(v)}<small>${OUT_UNIT[k]||k}</small>`;
+}
+function gradeOf(i,stn){
+  const ref=refOut(stn),o=calcOut(i,stn);
+  const b=CONST_OUT.has(stn.id)?"—":grade(Object.entries(o).reduce((s,[k,v])=>s+Math.abs(v)/(ref[k]||1),0));
+  return `${b}/${costGrade(totalCost(calcCost(i,stn,[])))}`;
+}
+function rollLines(i,stn,cs){
+  const L=STATUSES.filter(s=>cs._f[s]).map(s=>`${SNAME[s]} ${cs._f[s]}`);
+  if(stn.rest)L.unshift("fatigue −(1d6+10)");
+  return L;
+}
+const d100Line=cs=>cs._acc==null?"":`d100: accident on ${Math.round(cs._acc*100)} or less, lucky on ${101-Math.round(cs._luck*100)} or more`;
+function cellTip(i,stn,x){
+  const c=S.characters[i],cs=x.cs,L=[`${c.name} at ${stn.name}`];
+  const rolls=rollLines(i,stn,cs);L.push("Roll: "+(rolls.join(", ")||"nothing"));
+  if(cs._acc!=null)L.push(d100Line(cs));
+  cs._notes.filter(n=>!/^accident/.test(n)).forEach(n=>L.push(n));
+  x.warn.forEach(w=>L.push(warnText(w)));
+  if(x.full)L.push(stn.slots===1?`Full: clicking swaps ${cname(S.characters[(curA()[stn.id]||[])[0]])} out.`:`Full: take someone off ${stn.name} first.`);
+  if(!stn.rest){const sh=S.sheetGrades?.[GRADE_KEY[stn.name]]?.[i];L.push(`Grade ${gradeOf(i,stn)}${sh?`, sheet says ${sh}`:""}`)}
+  L.push(`Score ${x.net>=0?"+":""}${x.net.toFixed(2)}${x.here?"":" if added"}`);
+  return esc(L.join("\n"));
+}
+
+/* ================= render ================= */
+function render(){renderTop();renderSupplies();renderBoard();renderSide();renderRecord();save()}
+
+function renderTop(){
+  const P=S.phase,applied=!!S.applied[P],dayDone=S.applied.p1&&S.applied.p2;
+  $("day").textContent=S.day??"–";
+  $("tabs").innerHTML=["p1","p2"].map(p=>`<button role="tab" aria-selected="${S.phase===p}" class="tab ${S.phase===p?"on":""}" data-phase="${p}">Phase ${PHASE_N[p]}${S.applied[p]?' <span class="ck" aria-label="applied">✓</span>':""}</button>`).join("");
+  if(document.activeElement!==$("power"))$("power").value=S.power.current;
+  $("pmax").textContent=`/ ${S.power.max??5}`;
+  for(const[id,d]of[["cap",5],["acc",10],["luck",90]])if(document.activeElement!==$(id))$(id).value=S[id]??d;
+  $("weather").value=S.weather;
+  $("auto").disabled=$("clear").disabled=applied;
+  $("auto").className="btn"+(dayDone?"":" primary");
+  $("newday").className="btn"+(dayDone?" primary":"");
+}
+
+function renderSupplies(){
+  const s=S.stock,ws=opts("workshop"),sg=opts("sigint"),fg=opts("forge"),need=S.characters.length*VAL.hungerPerNight;
+  const food=s.fruit*5+s.mre*20+(s.perish||0),nights=food/need,hasQ=fg.queue&&fg.queue!=="None";
+  const n=(k,v,x="")=>`<input type="number" class="num stk" data-k="${k}" ${x} value="${v}" aria-label="${k}">`;
+  const n2=(k2,k,v,x="")=>`<input type="number" class="num stk" data-k2="${k2}" data-k="${k}" ${x} value="${v}" aria-label="${k2} ${k}">`;
+  $("supplies").innerHTML=`
+    <div class="sup"><span class="k">Food</span>${n("fruit",s.fruit)}fruit ${n("mre",s.mre)}MRE${s.perish?` ${s.perish} hunger in perishables`:""}
+      <span class="sum ${nights<1.5?"low":""}" title="${food} hunger stored, ${need} eaten per night">${fx(nights)} nights</span></div>
+    <div class="sup"><span class="k">Water</span>${n("raw",s.raw,'step="0.5"')}/ ${s.rawCap} raw ${n("clean",s.clean,'step="0.5"')}/ ${s.cleanCap} clean ${n("pur",s.pur,'step="0.5"')}/ ${s.purCap||6} purified</div>
+    <div class="sup"><span class="k">Wood</span>${n("wood",s.wood??0)}<span class="k" style="margin-left:10px">Metal</span>${n("metal",s.metal??0)}</div>
+    <div class="sup"><span class="k">Lab</span>${n2("workshop","banked",ws.banked)}/ ${n2("workshop","need",ws.need)}</div>
+    <div class="sup"><span class="k">Forge</span><input type="text" class="txt stk" data-k2="forge" data-k="queue" value="${esc(fg.queue||"None")}" aria-label="Forge project" title="Active Forge project, or None">${hasQ?`${n2("forge","banked",fg.banked||0)}/ ${fg.need||100}`:""}</div>
+    <div class="sup"><span class="k">SIGINT</span>${n2("sigint","progress",sg.progress)}/ ${sg.need}</div>`;
+}
+
+function renderBoard(){
+  hoverKey="";hoverCi=-1;                               // the cells are replaced, so the next mouseover must repaint
+  const A=curA(),locked=!!S.applied[S.phase],N=needsCtx(),info={};let top=0;
+  S.characters.forEach((c,i)=>{if(S.away.includes(i))return;
+    for(const stn of STATIONS){const x=cellInfo(i,stn,A,N);info[i+":"+stn.id]=x;if(!x.here&&x.net>top)top=x.net}});
+  const head=`<colgroup><col class="cw">${STATIONS.map(()=>'<col class="cs">').join("")}</colgroup>
+    <thead><tr><th></th>${STATIONS.map(stn=>headCell(stn,A)).join("")}</tr></thead>`;
+  const rows=S.characters.map((c,i)=>`<tr>${whoCell(i,A)}${S.away.includes(i)
+    ?`<td colspan="${STATIONS.length}" class="awayrow">Away on a mission today.<button class="btn sm" data-act="msn" data-i="${i}">Back at camp</button></td>`
+    :STATIONS.map(stn=>`<td>${cellHtml(i,stn,info[i+":"+stn.id],locked,top,N)}</td>`).join("")}</tr>`).join("");
+  const foot=`<tfoot><tr><th>Suggest priority<small>0 = never suggest</small></th>${STATIONS.map(stn=>`<td>${dial(stn)}</td>`).join("")}</tr></tfoot>`;
+  const b=$("board");b.innerHTML=head+`<tbody>${rows}</tbody>`+foot;
+  b.classList[locked?"add":"remove"]("locked");
+}
+function headCell(stn,A){
+  const ss=opts(stn),a=A[stn.id]||[],steps=condSteps(ss),cost=(stn.power||0)+(stn.powerOpt&&ss.powerOpt?stn.powerOpt.cost:0);
+  const bits=[];
+  if(!stn.rest)bits.push(`<span class="pips" aria-label="${a.length} of ${stn.slots} slots used">${[...Array(stn.slots)].map((_,k)=>`<i class="${k<a.length?"f":""}"></i>`).join("")}</span>`);
+  if(cost)bits.push(`<span class="pw">−${cost} power</span>`);
+  if(stn.id==="bike")bits.push(`<span class="pw">+2 power</span>`);
+  if(!stn.rest)bits.push(`<span class="cd ${steps?"bad":""}" title="Condition${steps?`: ${steps} penalty step${steps>1?"s":""}`:""}">${ss.cond}%</span>`);
+  if(!ss.on)bits.push("closed");
+  return `<th class="sh ${ss.on?"":"off"}" scope="col"><button class="hd" data-stn="${stn.id}" title="Settings, rules and who fits best">${esc(stn.rest?"Rest":stn.name.replace(/^The /,""))}</button><div class="hm">${bits.join("")}</div></th>`;
+}
+function whoCell(i,A){
+  const c=S.characters[i],away=S.away.includes(i),sid=stationOf(A,i),stn=sid&&st(sid);
+  const d=stn&&!away?deltas(i,stn,calcCost(i,stn)):null;
+  const tags=[...c.traits.map(t=>`<span title="${esc(t.text)}">${esc(nice(t.name))}</span>`),
+    ...c.conditions.map(x=>`<span class="cnd" title="${esc(x)}">${esc(nice(String(x).split(/\s+[-—–]\s+|:/)[0]))}</span>`)];
+  if(hydraMod(c))tags.push(`<span class="hy" title="Moves accident and lucky thresholds by ${hydraMod(c)}">${esc(nice(c.hydration))} hydration</span>`);
+  return `<th class="who ${away?"away":""}" scope="row">
+    <div class="wh"><button class="nm" data-act="edit" data-i="${i}" title="Edit statuses, skills and hydration">${esc(c.name)}</button>
+      <span class="arch">${c.ignorePen?'<span class="np">ignoring penalties</span>':esc(c.archetype)}</span>
+      <button class="ic ${away?"on":""}" data-act="msn" data-i="${i}" title="${away?"Back at camp":"Away on a mission today"}" aria-pressed="${away}">✈</button></div>
+    <div class="bars" id="bars-${i}">${barsHtml(i,d)}</div>
+    <div class="tr" title="${esc([...c.traits.map(t=>`${t.name}: ${t.text}`),...c.conditions].join("\n"))}">${tags.join(", ")}</div></th>`;
+}
+function cellHtml(i,stn,x,locked,top,N){
+  const ss=opts(stn),c=S.characters[i];
+  if(!ss.on)return `<div class="cell x" title="${esc(stn.name)} is closed. Open it from its header.">closed</div>`;
+  const k=Object.keys(x.o)[0];let main;
+  if(stn.rest){const r=Math.min(-x.o.fatigue,c.statuses.fatigue);main=r>0?`−${fx(r)}<small>fatigue</small>`:`<small>nothing to rest off</small>`}
+  else main=outText(k,x.o[k]*(RES_KEYS.includes(k)?x.pm:1),N);
+  const r=(x.cs._rand||0)/STATUSES.length;
+  const costs=STATUSES.filter(s=>(x.cs[s]||0)>=.5).sort((a,b)=>x.cs[b]-x.cs[a]).map(s=>{       // coloured when it crosses a penalty line
+    const v=c.statuses[s],p=v+x.cs[s]+r,cross=bandN(p)>bandN(v)?` class="t${bandN(p)}"`:"";
+    return `<span>${SABBR[s]} <b${cross}>+${Math.round(x.cs[s])}</b></span>`});
+  const flag=x.warn.some(w=>/DEATH/.test(w))?'<span class="fl" title="Death risk" aria-label="death risk">☠</span>':"";
+  const cls=["cell",x.here?"on":"",x.full?"full":"",!x.here&&x.net<0?"neg":""].filter(Boolean).join(" ");
+  const t=!x.here&&x.net>0&&top>0?(.04+.3*x.net/top).toFixed(3):0;
+  return `<button class="${cls}" data-ci="${i}" data-st="${stn.id}" style="--t:${t}" title="${cellTip(i,stn,x)}"${locked?" disabled":""}>`
+    +`<span class="o">${main}</span><span class="c">${costs.join(" ")||"&nbsp;"}</span>${flag}</button>`;
+}
+function dial(stn){
+  const p=opts(stn).prio;
+  return `<div class="dial" role="group" aria-label="${esc(stn.name)} priority">${[0,1,2,3].map(v=>
+    `<button data-prio="${v}" data-st="${stn.id}" class="${p===v?"on":""} ${v?"":"z"}" title="${v?`Suggest weighs this job ×${VAL.prioMult[v]}`:"Suggest leaves this job empty"}">${v}</button>`).join("")}</div>`
+    +(Number.isInteger(p)?"":`<div class="frac">${p}</div>`);
+}
+
+/* ================= outcome panel ================= */
+function planYield(A){
+  const t={},cancels=[];
+  for(const[sid,arr]of Object.entries(A)){if(!arr.length)continue;const stn=st(sid),pm=pairMult(stn,arr);
+    for(const ci of arr){const o=calcOut(ci,stn);
+      for(const k in o){if(k==="power"||k==="fatigue")continue;const v=o[k]*(RES_KEYS.includes(k)?pm:1);
+        if(k==="cancel")cancels.push(v);else t[k]=(t[k]||0)+v}}}
+  return {t,cancels,wRaw:(WEATHER_W[wx()]||{}).raw||0,pw:powerFlow(A)};
+}
+const pg=(have,add,need)=>{const a=Math.min(100,have/need*100),b=Math.min(100-a,add/need*100);
+  return `<div class="pg"><i style="width:${a}%"></i><i class="add" style="left:${a}%;width:${b}%"></i></div>`};
+function renderSide(){
+  const A=curA(),P=S.phase,n=PHASE_N[P],applied=!!S.applied[P],{t,cancels,wRaw,pw}=planYield(A);
+  const any=Object.values(A).some(a=>a.length),aw=S.autoWhy,isAuto=!!aw&&aw.phase===P&&aw.plan===JSON.stringify(A);
+  if(isAuto&&!aw.ctx)aw.ctx=ctxSig();                    // first render after a suggestion stamps its inputs
+  const stale=isAuto&&aw.ctx!==ctxSig();
+  const src=applied?"Applied. The board is locked.":isAuto?(stale?"Suggested before your last change. Suggest again to refresh it.":"Suggested plan."):any?"Your plan.":"Nobody is assigned yet.";
+  const s=S.stock,need=S.characters.length*VAL.hungerPerNight,food=s.fruit*5+s.mre*20+(s.perish||0);
+  const pmax=S.power.max??5,gen=pw.pool-S.power.current;
+  const pips=`<div class="pp ${pw.left<0?"short":""}">${[...Array(pmax)].map((_,k)=>`<i class="${k<pw.left?"f":""}"></i>`).join("")}</div>`;
+  const pline=(pw.left<0?`<b class="bad">short by ${-pw.left}</b>`:`<b>${pw.left} left</b>`)
+    +` after the phase (${S.power.current} now${gen?`, bike +${fx(gen)}`:""}${pw.spend?`, jobs −${pw.spend}`:""})`;
+  const Y=[];
+  const row=(l,v,x,wn)=>Y.push(`<span class="l">${l}</span><span class="v">${v}</span><span class="x ${wn?"wn":""}">${x}</span>`);
+  if(t.fruit)row("Fruit",`+${fx(t.fruit)}`,`food ${fx(food/need)} → ${fx((food+t.fruit*5)/need)} nights`);
+  const raw=(t.rawWater||0)+wRaw;
+  if(raw){const to=s.raw+raw,cap=s.rawCap||Infinity;
+    row("Raw water",`+${fx(raw)}`,`${fx(s.raw)} → ${fx(Math.min(cap,to))} of ${s.rawCap}${to>cap?`, ${fx(to-cap)} spills`:""}${wRaw?`, ${wRaw} from ${wx().toLowerCase()}`:""}`,to>cap)}
+  if(t.wood)row("Wood",`+${fx(t.wood)}`,`${s.wood??0} → ${fx((s.wood??0)+t.wood)}`);
+  if(t.metal)row("Metal",`+${fx(t.metal)}`,`${s.metal??0} → ${fx((s.metal??0)+t.metal)}`);
+  if(t.pWork!=null){const w=opts("workshop"),rem=Math.max(0,w.need-w.banked);
+    row("Lab",`+${fx(Math.min(t.pWork,rem),0)}`,t.pWork>=rem?`finishes${t.pWork>rem?`, ${fx(t.pWork-rem,0)} wasted`:""}`:`${w.banked} → ${fx(w.banked+t.pWork,0)} of ${w.need}`,t.pWork>rem+.5);
+    Y.push(pg(w.banked,t.pWork,w.need))}
+  if(t.pForge!=null){const f=opts("forge"),q=f.queue&&f.queue!=="None",fn=f.need||100,fb=f.banked||0;
+    if(q){row("Forge",`+${fx(Math.min(t.pForge,fn-fb),0)}`,`${esc(f.queue)}: ${fb} → ${fx(Math.min(fn,fb+t.pForge),0)} of ${fn}`);Y.push(pg(fb,t.pForge,fn))}
+    else row("Forge","+0","no project queued, so this work is lost",true)}
+  if(t.pSIG!=null){const g=opts("sigint"),rem=Math.max(0,g.need-g.progress);
+    row("SIGINT",`+${fx(t.pSIG,0)}`,t.pSIG>=rem?`scan completes, ${fx(t.pSIG-rem,0)} carries over`:`${g.progress} → ${fx(g.progress+t.pSIG,0)} of ${g.need}`);
+    Y.push(pg(g.progress,t.pSIG,g.need))}
+  if(cancels.length){const p=(1-cancels.reduce((a,v)=>a*(1-Math.min(100,v)/100),1))*100;
+    row("Cancel",`${fx(p,0)}%`,"chance to gain a plague card cancel")}
+
+  // things to watch
+  const W=[],push=(lvl,who,txt)=>W.push(`<li class="${lvl}">${who?`<b>${esc(who)}</b> `:""}${esc(txt)}</li>`);
+  if(pw.left<0)push("d","",`Power runs short by ${-pw.left}. Put someone on the bike or drop a powered job.`);
+  if(workersIn(A)>(S.cap??5))push("w","",`${workersIn(A)} people working, but the cap is ${S.cap??5}.`);
+  for(const stn of STATIONS){const arr=A[stn.id]||[];
+    for(const ci of arr){const cs=calcCost(ci,stn,arr),nm=cname(S.characters[ci]);
+      projWarn(ci,cs,stn).forEach(w=>push(/DEATH/.test(w)?"d":"w",nm,warnText(w)));
+      cs._notes.filter(x=>!/^accident/.test(x)).forEach(x=>push("",nm,x))}
+    stationNotes(stn,arr).filter(x=>!/✓/.test(x)).forEach(x=>push(/needs one/.test(x)?"w":"","",x))}
+  S.characters.forEach((c,i)=>{if(S.away.includes(i)||!hasTrait(c,/EASILY BORED/i)||isBoredDone())return;
+    const sid=stationOf(A,i);
+    if(!(sid&&st(sid).ida))push(P==="p2"?"w":"",cname(c),`hasn't had a mental or science job today (Workshop, SIGINT, Hydroponics or Lookout).`)});
+  const idle=S.characters.map((c,i)=>i).filter(i=>!S.away.includes(i)&&!stationOf(A,i));
+  if(idle.length&&any)push("","",`${idle.map(i=>cname(S.characters[i])).join(", ")} ${idle.length>1?"are":"is"} idle.`);
+
+  let why="";
+  if(isAuto){const m=/^(.*) = (-?[\d.]+)$/.exec(aw.text)||[];
+    const parts=(m[1]||"").split(" · ").map(p=>/^(.*) ([+-][\d.]+)$/.exec(p)).filter(Boolean);
+    why=`<div class="card"><h2>Why this plan</h2><ul class="why">${parts.map(([,l,v])=>`<li><span>${esc(l)}</span><span>${v}</span></li>`).join("")}
+      <li class="tot"><span>Total</span><span>${m[2]||"0"}</span></li></ul>
+      <p class="hint">Points are roughly shifts of useful work, after the fatigue, injury and accident risk each job costs. The priority dials under the board scale each job.</p></div>`}
+
+  $("side").innerHTML=`<div class="card"><h2>Phase ${n} outcome</h2><p class="src ${stale?"stale":""}">${src}</p>
+    <div class="pwr">${pips}<p>Power: ${pline}</p></div>
+    ${Y.length?`<div class="yl">${Y.join("")}</div>`:any?"":`<p class="none">Suggest a plan, or click cells on the board.</p>`}
+    ${!any&&!applied?`<p style="margin:12px 0 0"><button class="btn primary" data-go="auto">Suggest plan</button></p>`:""}</div>
+    ${W.length?`<div class="card"><h2>Watch out</h2><ul class="wl">${W.join("")}</ul></div>`:""}${why}`;
+}
+
+/* ================= record the dice ================= */
+/* outputs Apply credits back into the supplies */
+const CREDIT={
+  fruit:v=>{S.stock.fruit+=v},
+  wood:v=>{S.stock.wood=(S.stock.wood||0)+v},
+  metal:v=>{S.stock.metal=(S.stock.metal||0)+v},
+  rawWater:v=>{S.stock.raw=Math.min(S.stock.rawCap||Infinity,S.stock.raw+v)},
+  pWork:v=>{const w=opts("workshop");w.banked=Math.min(w.need,w.banked+v)},
+  pForge:v=>{const f=opts("forge");if(f.queue&&f.queue!=="None")f.banked=Math.min(f.need||100,(f.banked||0)+v)},
+  pSIG:v=>{const g=opts("sigint");g.progress+=v;while(g.progress>=g.need){g.progress-=g.need;g.need+=5}}};
+
+function renderRecord(){
+  const A=curA(),P=S.phase,n=PHASE_N[P];
+  if(S.applied[P]){
+    const canUndo=S.undoSnap&&S.undoSnap.phase===P;
+    $("record").innerHTML=`<div class="done"><h2>Phase ${n} is applied</h2><p>${esc(S.appliedLog?.[P]||"")}</p>
+      <div class="applyrow">${canUndo?'<button class="btn" id="undoApply">Undo apply</button>':""}
+      ${P==="p1"?'<button class="btn" data-phase-go="p2">Go to Phase 2</button>':'<button class="btn primary" data-go="newday">Start the next day</button>'}</div></div>`;
+    if(canUndo)$("undoApply").onclick=undoApply;
+    return;
+  }
+  const cards=[];
+  for(const stn of STATIONS){
+    const arr=A[stn.id]||[];if(!arr.length)continue;
+    const pm=pairMult(stn,arr);
+    for(const ci of arr){
+      const cs=calcCost(ci,stn,arr),c=S.characters[ci],o=calcOut(ci,stn),k=Object.keys(o)[0],amt=(o[k]||0)*(RES_KEYS.includes(k)?pm:1);
+      const rest=stn.rest?o.fatigue:0;   // Shelter recovery lives in out(), not cost()
+      const ins=STATUSES.map(sk=>{
+        const fStr=stn.rest&&sk==="fatigue"?"−(1d6+10)":cs._f[sk]||"";
+        const pre=stn.rest&&sk==="fatigue"?-Math.round(Math.abs(rest)):Math.round(cs[sk]||0);
+        return `<label>${SABBR[sk]}<input type="number" class="rsv ${fStr?"rolled":""}" data-i="${ci}" data-k="${sk}" data-rest="${stn.rest?1:0}" value="${pre}" title="${sk}${fStr?` (${fStr})`:""}"></label>`}).join("");
+      const out=stn.rest?`<label>&nbsp;<span class="ro"></span></label>`
+        :CREDIT[k]?`<label>${OUT_UNIT[k]||k}<input type="number" class="rso rolled" data-k="${k}" step="0.5" value="${+amt.toFixed(1)}" title="${OUT_LBL[k]} produced"></label>`
+        :`<label>${k==="cancel"?"cancel":OUT_UNIT[k]||k}<span class="ro">${k==="cancel"?`${amt.toFixed(0)}%`:`+${+amt.toFixed(1)}`}</span></label>`;
+      const rolls=rollLines(ci,stn,cs),d1=d100Line(cs);
+      cards.push(`<article class="rec"><h3>${esc(cname(c))} <span>at ${esc(stn.rest?"the Shelter, resting":stn.name.replace(/^The /,""))}</span></h3>
+        <p class="roll">Roll ${esc(rolls.join(", ")||"nothing")}.${d1?`<br>${esc(d1)}.`:""}</p>
+        <div class="ins">${ins}${out}</div></article>`);
+    }
+  }
+  $("record").innerHTML=`<div class="rechead"><h2>Record the dice</h2><p>Roll for each job and type what actually happened. Boxes start at the expected result. Put accident damage in the matching status.</p></div>`
+    +(cards.length?`<div class="recs">${cards.join("")}</div>
+      <div class="applyrow"><button class="btn primary" id="apply">Apply phase ${n}</button><p>Statuses, supplies and power update${P==="p1"?", then Phase 2 opens with a fresh suggestion":""}. You can undo it.</p></div>`
+     :`<p class="none">Nothing to roll yet. Put someone on a job first.</p>`);
+  if(cards.length)$("apply").onclick=applyPhase;
+}
+function applyPhase(){
+  const A=curA();if(S.applied[S.phase])return;
+  const snap=JSON.parse(JSON.stringify(S));delete snap.undoSnap;
+  const left=powerFlow(A).left,wRaw=(WEATHER_W[wx()]||{}).raw||0;
+  const outs=[...document.querySelectorAll(".rso")].map(inp=>[inp.dataset.k,+inp.value]);
+  const logParts=[];
+  document.querySelectorAll(".rsv").forEach(inp=>{
+    const ci=+inp.dataset.i,k=inp.dataset.k,s=S.characters[ci].statuses;
+    let dv=+inp.value;
+    // At Shelter, treat either +14 or -14 in the fatigue box as fatigue recovery (-14)
+    if(+inp.dataset.rest&&k==="fatigue"&&dv>0)dv=-dv;
+    if(dv){s[k]=Math.max(0,s[k]+dv);logParts.push(`${cname(S.characters[ci])} ${SABBR[k]}${dv>=0?"+":""}${dv}`)}
+  });
+  outs.forEach(([k,v])=>CREDIT[k](v));if(wRaw)CREDIT.rawWater(wRaw);   // weather water: once per phase
+  S.power.current=Math.max(0,left);
+  S.undoSnap=snap;
+  S.appliedLog=S.appliedLog||{};
+  S.appliedLog[S.phase]=logParts.join(", ")||"no status changes";
+  S.applied[S.phase]=true;if(S.phase==="p1")S.phase="p2";render();
+  autoIfEmpty();
+}
+function undoApply(){S=S.undoSnap;render()}
+
+/* ================= power ================= */
+/* power over one phase: bike resolves first (capped at max), station costs are per station, not per worker */
+function powerFlow(A,waterPoOverride){
+  let spend=0,gen=0;
+  for(const[sid,arr]of Object.entries(A)){if(!arr.length)continue;const stn=st(sid);
+    const po=sid==="water"&&waterPoOverride!==undefined?waterPoOverride:opts(sid).powerOpt;
+    spend+=(stn.power||0)+(po&&stn.powerOpt?stn.powerOpt.cost:0);
+    for(const ci of arr)gen+=calcOut(ci,stn).power||0}
+  const pool=Math.min(S.power.max??5,S.power.current+gen);
+  return {pool,spend,left:pool-spend};
+}
+
+/* ================= station dialog & grade sheet ================= */
+const GRADE_KEY={"Generator Bike":"Gen. Bike (--/AGI)","Water Tanks":"Water (--/STR+CON)","The Workshop":"Workshop (CRF+COMP/--)","SIGINT":"SIGINT (SCAV/COMP)","Hydroponics":"Hydroponics","Logging":"Logging (CON/AGI)","Iron Processing":"Iron (STR / DEX)","Lookout Station":"Lookout (PER / FLD)"};
+function openStation(sid){
+  const stn=st(sid),ss=opts(sid),A=curA(),N=needsCtx();
+  const rows=S.characters.map((c,i)=>i).filter(i=>!S.away.includes(i)).map(i=>({i,x:cellInfo(i,stn,A,N)})).sort((a,b)=>b.x.net-a.x.net)
+    .map(({i,x})=>{const c=S.characters[i],cs=x.cs,k=Object.keys(x.o)[0];
+      const mk=stn.rest?`−${fx(Math.min(-x.o.fatigue,c.statuses.fatigue))} fatigue`:strip(outText(k,x.o[k]*(RES_KEYS.includes(k)?x.pm:1),N).replace(/<small>/," "));
+      const sh=S.sheetGrades?.[GRADE_KEY[stn.name]]?.[i];
+      return `<tr class="${x.here?"on":""}"><td><b>${esc(cname(c))}</b></td><td>${esc(mk)}</td><td>${esc(rollLines(i,stn,cs).join(", ")||"—")}</td>
+        <td>${cs._acc!=null?`${Math.round(cs._acc*100)}% / ${Math.round(cs._luck*100)}%`:"—"}</td>
+        <td>${stn.rest?"—":gradeOf(i,stn)+(sh?` <span style="color:var(--faint)">(sheet ${esc(sh)})</span>`:"")}</td>
+        <td>${x.net>=0?"+":""}${x.net.toFixed(2)}</td>
+        <td class="nt">${esc([...cs._notes.filter(n=>!/^accident/.test(n)),...x.warn.map(warnText)].join("; "))}</td></tr>`}).join("");
+  $("modalBox").innerHTML=`<div class="dr" data-sid="${sid}">
+    <header><h2>${esc(stn.name)}</h2><button class="ic" data-close aria-label="Close">✕</button></header>
+    <p class="lede">${esc(stn.note)}</p>
+    <div class="form">
+      <label class="chk"><input type="checkbox" data-ss="on" ${ss.on?"checked":""}> Open today</label>
+      <div class="fl">Suggest priority ${dial(stn)}<input type="number" class="num" data-ss="prio" step="0.5" min="0" max="3" value="${ss.prio}" aria-label="Exact priority"></div>
+      ${stn.rest?"":`<label class="fl">Condition <input type="number" class="num" data-ss="cond" value="${ss.cond}">%</label>`}
+      ${stn.abund?`<label class="fl">Abundance <input type="number" class="num" data-ss="abundance" value="${ss.abundance}">%</label>`:""}
+      ${stn.powerOpt?`<label class="chk"><input type="checkbox" data-ss="powerOpt" ${ss.powerOpt?"checked":""}> Spend 1 power for 5 raw water instead of 3.5</label>`:""}
+    </div>
+    <h3>Who fits best</h3>
+    <div style="overflow-x:auto"><table class="cmp"><tr><th>Survivor</th><th>Makes</th><th>Rolls</th><th>Accident / lucky</th><th>Grade</th><th>Score</th><th>Notes</th></tr>${rows}</table></div>
+    <h3>Rules</h3><p class="rules">${esc(stn.rules)}</p></div>`;
+  $("modal").classList.add("open");
+}
+function openGrades(){
+  const names=S.characters.map(cname);
+  const rows=STATIONS.filter(s=>!s.rest).map(stn=>{const sh=S.sheetGrades?.[GRADE_KEY[stn.name]];
+    return `<tr><th class="l">${esc(stn.name)}</th>${S.characters.map((c,i)=>S.away.includes(i)?"<td>—</td>"
+      :`<td>${gradeOf(i,stn)}${sh?`<small>sheet ${esc(sh[i])}</small>`:""}</td>`).join("")}</tr>`}).join("");
+  $("modalBox").innerHTML=`<header><h2>Grade sheet</h2><button class="ic" data-close aria-label="Close">✕</button></header>
+    <p class="lede">Benefit / cost letter grades worked out from current skills and statuses, with the spreadsheet's own grade underneath. The board's numbers are more precise.</p>
+    <div style="overflow-x:auto"><table class="gt"><tr><th class="l">Station</th>${names.map(x=>`<th>${esc(x)}</th>`).join("")}</tr>${rows}</table></div>`;
+  $("modal").classList.add("open");
+}
+const closeModal=()=>$("modal").classList.remove("open");
+
+/* ================= interactions ================= */
+function assign(ci,sid){
+  const P=S.phase;
+  if(S.applied[P])return toast(`Phase ${PHASE_N[P]} is applied. Undo it to change the plan.`);
+  if(S.away.includes(ci))return;
+  const stn=st(sid),A=curA(),cur=A[sid]||[];
+  if(!opts(sid).on)return toast(`${stn.name} is closed. Open it from its header.`);
+  if(cur.includes(ci)){A[sid]=cur.filter(x=>x!==ci);return render()}
+  const from=stationOf(A,ci),busy=!!from&&!st(from).rest;
+  let bump=null;
+  if(!stn.rest&&cur.length>=stn.slots){
+    if(stn.slots>1)return toast(`${stn.name} is full. Take someone off it first.`);
+    bump=cur[0];
+  }
+  if(!stn.rest&&!busy&&bump==null&&workersIn(A)>=(S.cap??5))
+    return toast(`The worker cap is ${S.cap??5}. Take someone off a job first, or raise the cap in Settings.`);
+  for(const id in A)A[id]=A[id].filter(x=>x!==ci);
+  if(bump!=null){A[sid]=[ci];toast(`${cname(S.characters[bump])} is now idle.`)}
+  else(A[sid]=A[sid]||[]).push(ci);
+  render();
+}
+function toggleAway(i){
+  const j=S.away.indexOf(i);
+  if(j>=0)S.away.splice(j,1);
+  else{S.away.push(i);for(const p in S.plans)if(!S.applied[p])for(const id in S.plans[p])S.plans[p][id]=S.plans[p][id].filter(x=>x!==i)}
+  render();
+}
+function paintBars(ci,sid){
+  const el=$("bars-"+ci);if(!el)return;
+  const A=curA(),cur=sid??stationOf(A,ci);let d=null;
+  if(cur){const stn=st(cur),arr=A[cur]||[],ws=arr.includes(ci)?arr:!stn.rest&&arr.length>=stn.slots?[ci]:[...arr,ci];
+    d=deltas(ci,stn,calcCost(ci,stn,ws))}
+  el.innerHTML=barsHtml(ci,d);el.classList[sid!=null?"add":"remove"]("pv");
+}
+$("board").addEventListener("click",ev=>{
+  const act=ev.target.closest("[data-act]");
+  if(act){const i=+act.dataset.i;if(act.dataset.act==="edit")openEditor(i);else toggleAway(i);return}
+  const hd=ev.target.closest("[data-stn]");if(hd)return openStation(hd.dataset.stn);
+  const pb=ev.target.closest("[data-prio]");if(pb){opts(pb.dataset.st).prio=+pb.dataset.prio;return render()}
+  const cell=ev.target.closest(".cell[data-ci]");if(cell)assign(+cell.dataset.ci,cell.dataset.st);
+});
+$("board").addEventListener("mouseover",ev=>{
+  const cell=ev.target.closest(".cell[data-ci]"),key=cell?cell.dataset.ci+":"+cell.dataset.st:"";
+  if(key===hoverKey)return;
+  if(hoverCi>=0)paintBars(hoverCi);
+  hoverKey=key;hoverCi=cell?+cell.dataset.ci:-1;
+  if(cell)paintBars(hoverCi,cell.dataset.st);
+});
+$("board").addEventListener("mouseleave",()=>{if(hoverCi>=0)paintBars(hoverCi);hoverCi=-1;hoverKey=""});
+$("side").addEventListener("click",ev=>{const g=ev.target.closest("[data-go]");if(g)$(g.dataset.go).onclick()});
+$("record").addEventListener("click",ev=>{
+  const g=ev.target.closest("[data-go]");if(g)return $(g.dataset.go).onclick();
+  const p=ev.target.closest("[data-phase-go]");if(p){S.phase=p.dataset.phaseGo;render()}
+});
+$("supplies").addEventListener("change",ev=>{
+  const t=ev.target;if(!t.classList.contains("stk"))return;
+  if(t.dataset.k2)opts(t.dataset.k2)[t.dataset.k]=t.type==="text"?t.value.trim():+t.value;
+  else S.stock[t.dataset.k]=+t.value;
+  render();
+});
+$("modal").addEventListener("click",ev=>{
+  if(ev.target.id==="modal"||ev.target.closest("[data-close]"))return closeModal();
+  const pb=ev.target.closest("[data-prio]");
+  if(pb){opts(pb.dataset.st).prio=+pb.dataset.prio;render();openStation(pb.dataset.st)}
+});
+$("modal").addEventListener("change",ev=>{
+  const t=ev.target,k=t.dataset.ss;if(!k)return;
+  const sid=t.closest("[data-sid]").dataset.sid,ss=opts(sid);
+  if(k==="on"){ss.on=t.checked;if(!t.checked&&!S.applied[S.phase])curA()[sid]=[]}
+  else if(k==="powerOpt")ss.powerOpt=t.checked;
+  else ss[k]=+t.value;
+  render();openStation(sid);
+});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape")closeModal()});
+$("tabs").addEventListener("click",ev=>{const b=ev.target.closest("[data-phase]");if(b){S.phase=b.dataset.phase;render()}});
+$("power").addEventListener("change",ev=>{S.power.current=+ev.target.value;render()});
+$("weather").addEventListener("change",()=>{S.weather=$("weather").value;render()});
+["acc","luck","cap"].forEach(id=>$(id).addEventListener("change",ev=>{S[id]=+ev.target.value;render()}));
+$("gradesBtn").onclick=openGrades;
+$("clear").onclick=()=>{if(S.applied[S.phase])return;S.plans[S.phase]={};(S.cleared=S.cleared||{})[S.phase]=true;render()};
+$("reset").onclick=()=>twoStep($("reset"),"Click again to reset",()=>{localStorage.removeItem(LS_KEY);S=freshState();render();autoIfEmpty()});
+$("newday").onclick=()=>{
+  const go=()=>{
+    S.day=+S.day+1;S.plans={p1:{},p2:{}};S.applied={};S.appliedLog={};delete S.undoSnap;S.cleared={};
+    S.away=[];S.characters.forEach(c=>c.ignorePen=false);
+    S.power.current=S.power.base;S.phase="p1";render();autoIfEmpty()};
+  if(S.applied.p1&&S.applied.p2)return go();
+  twoStep($("newday"),"Not applied yet. Click again",go);
+};
+$("copy").onclick=()=>{
+  const lines=[`Day ${S.day}, Work Phase ${PHASE_N[S.phase]} (${wx()})`];
+  for(const stn of STATIONS){const a=curA()[stn.id]||[];if(a.length)lines.push(`${stn.name}: ${a.map(i=>S.characters[i].name).join(", ")}`)}
+  const idle=S.characters.map((c,i)=>i).filter(i=>!Object.values(curA()).flat().includes(i)&&!S.away.includes(i));
+  if(idle.length)lines.push(`Unassigned: ${idle.map(i=>S.characters[i].name).join(", ")}`);
+  navigator.clipboard.writeText(lines.join("\n")).then(()=>toast("Plan copied to the clipboard."));
+};
+
+/* ---------- power-aware exhaustive optimizer ----------
+   plan value = Σ prioM(prio)·stationValue − Σ strain + rest + Ida bonus + power reserve (see VAL).
+   Water Tanks is evaluated both unpowered (3.5 raw) and powered (5 raw, 1 power) when beneficial. */
+$("auto").onclick=()=>{
+  if(S.applied[S.phase])return;
+  const cap=S.cap??5,P=S.phase,N=needsCtx(),av=S.characters.map((c,i)=>i).filter(i=>!S.away.includes(i)),n=av.length;
+  const stns=STATIONS.filter(s=>opts(s.id).on&&opts(s.id).prio>0),ns=stns.length;   // prio 0 = off
+  const bored=ci=>hasTrait(S.characters[ci],/EASILY BORED/i);
+  const boredDone=isBoredDone();
+  const bikePrio=opts("bike").prio;
+  const resW=P==="p1"?VAL.powerReserve*prioM(Math.max(1,bikePrio)):bikePrio>1?VAL.powerReserve*prioM(bikePrio):0;
+
+  function solveForWater(waterPo){
+    const NET=[],GEN=[],COST=[];
+    stns.forEach((stn,s)=>{const pr=prioM(opts(stn.id).prio);NET[s]=new Float64Array(1<<n);GEN[s]=new Float64Array(1<<n);
+      const po=stn.id==="water"?waterPo:opts(stn.id).powerOpt;
+      COST[s]=(stn.power||0)+(stn.powerOpt&&po?stn.powerOpt.cost:0);
+      if(stn.rest)return;                                   // resting is valued per person below
+      const oOv=stn.id==="water"?{...opts("water"),powerOpt:waterPo}:undefined;
+      for(let m=1;m<1<<n;m++){const ws=av.filter((_,k)=>m>>k&1);if(ws.length>stn.slots)continue;
+        let v=pr*stationValue(stn,ws,N,oOv);
+        for(const ci of ws){v-=strainOf(ci,stn,ws.length>1).work;if(stn.ida&&!boredDone&&bored(ci))v+=VAL.bored}
+        NET[s][m]=v;GEN[s][m]=ws.reduce((g,ci)=>g+(calcOut(ci,stn,oOv).power||0),0)}});
+    const sh=stns.findIndex(s=>s.rest);
+    const REST=av.map(ci=>{if(sh<0)return 0;const r=strainOf(ci,stns[sh],false);return prioM(opts("shelter").prio)*r.rest-r.work});
+    const SZ=new Int8Array(1<<n);for(let m=1;m<1<<n;m++)SZ[m]=SZ[m>>1]+(m&1);
+    const OK=av.map((_,k)=>stns.map((stn,s)=>{if(stn.rest)return false;
+      for(let m=0;m<1<<n;m++){const mk=m|1<<k;if(m===mk||SZ[mk]>stn.slots)continue;
+        if(NET[s][mk]-NET[s][m]>1e-9||GEN[s][mk]>GEN[s][m])return true}
+      return false}));
+    const p0=S.power.current,pmax=S.power.max??5;
+    const mask=new Int32Array(ns),cnt=new Int32Array(ns),pick=new Int32Array(n);
+    let best={v:-Infinity,waterPo,NET,REST,sh},workers=0,val=0,spend=0,gen=0;
+    (function dfs(k){
+      if(k===n){const left=Math.min(pmax,p0+gen)-spend;     // bike resolves first; costs are per station
+        if(left<0)return;
+        const v=val+resW*left;if(v>best.v+1e-9)best={v,left,pick:pick.slice(),waterPo,NET,REST,sh};return}
+      pick[k]=-1;dfs(k+1);                                  // idle
+      if(sh>=0&&REST[k]>0){pick[k]=sh;val+=REST[k];dfs(k+1);val-=REST[k]}
+      if(workers>=cap)return;
+      for(let s=0;s<ns;s++){if(s===sh||cnt[s]>=stns[s].slots||!OK[k][s])continue;
+        const o=mask[s],m=o|1<<k,dv=NET[s][m]-NET[s][o],dg=GEN[s][m]-GEN[s][o],dc=o?0:COST[s];
+        pick[k]=s;mask[s]=m;cnt[s]++;workers++;val+=dv;gen+=dg;spend+=dc;
+        dfs(k+1);
+        val-=dv;gen-=dg;spend-=dc;workers--;cnt[s]--;mask[s]=o}
+    })(0);
+    return best;
+  }
+
+  let best=solveForWater(false);
+  if(stns.some(s=>s.id==="water")){
+    const bPow=solveForWater(true);
+    if(bPow.v>best.v+1e-9)best=bPow;
+  }
+  const A={},why=[];
+  let usedWater=false;
+  stns.forEach((stn,s)=>{const ks=av.map((_,k)=>k).filter(k=>best.pick[k]===s);if(!ks.length)return;
+    A[stn.id]=ks.map(k=>av[k]);
+    if(stn.id==="water")usedWater=true;
+    const v=s===best.sh?ks.reduce((t,k)=>t+best.REST[k],0):best.NET[s][ks.reduce((m,k)=>m|1<<k,0)];
+    why.push(`${sname(stn)} ${v>=0?"+":""}${v.toFixed(2)}`)});
+  if(usedWater)opts("water").powerOpt=best.waterPo;
+  if(resW*best.left)why.push(`power reserve +${(resW*best.left).toFixed(2)}`);
+  S.plans[P]=A;S.autoWhy={phase:P,plan:JSON.stringify(A),text:`${why.join(" · ")||"nothing worth doing"} = ${best.v.toFixed(2)}`};render();
+};
+
+/* ---------- character editor ---------- */
+function openEditor(i){
+  const c=S.characters[i];
+  const skillRows=Object.entries(c.skills).map(([k,v])=>`<label>${k}<input type="number" data-k="${k}" value="${v.max??v.cur}"></label>`).join("");
+  const stRows=STATUSES.map(k=>`<label>${k}<input type="number" data-s="${k}" value="${c.statuses[k]}"></label>`).join("");
+  $("modalBox").innerHTML=`<h2>${c.name} — ${c.archetype}</h2>
+    <div class="rowline"><label>Hydration <select id="hsel">${["FULL","LIGHT","MODERATE","SEVERE"].map(h=>`<option ${h===c.hydration?"selected":""}>${h}</option>`).join("")}</select></label>
+    <label><input type="checkbox" id="awayC" ${S.away.includes(i)?"checked":""}> on mission</label>
+    <label><input type="checkbox" id="nopC" ${c.ignorePen?"checked":""}> ignore status penalties (CIGS etc.)</label></div>
+    <h2 style="margin-top:10px">Statuses</h2><div class="grid">${stRows}</div>
+    <h2 style="margin-top:10px">Base skills (unpenalized)</h2><div class="grid">${skillRows}</div>
+    <h2 style="margin-top:10px">Traits &amp; conditions</h2>
+    <div style="font-size:12px;color:var(--dim)">${c.traits.map(t=>`<div><b>${t.name}</b> — ${t.text}</div>`).join("")}${c.conditions.map(x=>`<div>• ${x}</div>`).join("")}</div>
+    <div class="rowline"><button class="primary" id="saveC">Done</button></div>`;
+  $("modal").classList.add("open");
+  $("saveC").onclick=()=>{
+    $("modalBox").querySelectorAll("[data-s]").forEach(inp=>c.statuses[inp.dataset.s]=+inp.value);
+    $("modalBox").querySelectorAll("[data-k]").forEach(inp=>{const v=+inp.value;c.skills[inp.dataset.k]={cur:v,max:v}});
+    c.hydration=$("hsel").value;c.ignorePen=$("nopC").checked;
+    const was=S.away.includes(i);
+    if($("awayC").checked&&!was){S.away.push(i);for(const p in S.plans)if(!S.applied[p])for(const id in S.plans[p])S.plans[p][id]=S.plans[p][id].filter(x=>x!==i)}
+    if(!$("awayC").checked&&was)S.away.splice(S.away.indexOf(i),1);
+    $("modal").classList.remove("open");render();
+  };
+}
+
+/* ---------- boot ---------- */
+/* a phase that opens with nobody assigned gets a suggestion straight away (unless you cleared it) */
+function autoIfEmpty(){
+  if(!S.applied[S.phase]&&!S.cleared?.[S.phase]&&!Object.values(curA()).some(a=>a.length))$("auto").onclick();
+}
+S=load();
+if(!WEATHERS.includes(S.weather))S.weather="Sunny";
+$("weather").innerHTML=WEATHERS.map(w=>`<option>${w}</option>`).join("");
+render();autoIfEmpty();
+</script>
+</body>
+</html>
